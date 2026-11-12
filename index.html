@@ -49,6 +49,12 @@ p{margin:0}
 header.top{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
 header.top .lead{grid-column:1/-1;max-width:34em;font-size:1.1rem}
 .strata{width:clamp(84px,24vw,150px);height:auto;color:var(--sea)}
+.strata .lines{opacity:.45}
+.strata text{font-family:var(--display);font-weight:800;font-size:74px;fill:var(--surface);stroke:var(--ink);stroke-width:3;paint-order:stroke;letter-spacing:-.04em}
+header.top .dp{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.stamp{display:inline-block;font-family:var(--display);font-weight:800;font-size:1.2rem;letter-spacing:.03em;background:var(--sun);color:var(--on-sun);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);padding:5px 14px;transform:rotate(-2deg)}
+.dp .q{font-family:var(--mono);font-size:.9rem}
+.credit{font-family:var(--mono);font-size:.74rem;color:var(--muted);line-height:1.5}
 
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--ink);background:var(--surface)}
 .tabs button{font-family:var(--display);font-weight:800;font-size:1rem;padding:11px 8px;border:0;border-right:2px solid var(--ink);background:none;color:var(--muted);cursor:pointer;min-width:0}
@@ -125,11 +131,13 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
       <h1>Forstået?</h1>
     </div>
     <svg class="strata" viewBox="0 0 150 100" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <path d="M4 22c30-8 50 6 76 0s40-8 66-2"/><path d="M4 40c28-6 52 8 78 2s38-10 64-4"/>
-      <path d="M4 58c30-8 48 6 74 0s42-8 68-2"/><path d="M4 76c26-6 54 8 80 2s36-10 62-4"/>
-      <path d="M92 4l-8 30 10 22-9 40" stroke-width="5"/>
+      <g class="lines"><path d="M4 22c30-8 50 6 76 0s40-8 66-2"/><path d="M4 40c28-6 52 8 78 2s38-10 64-4"/>
+      <path d="M4 58c30-8 48 6 74 0s42-8 68-2"/><path d="M4 76c26-6 54 8 80 2s36-10 62-4"/></g>
+      <text x="75" y="76" text-anchor="middle">42</text>
+      <path d="M12 12h6M15 9v6M134 88h6M137 85v6M128 10h4M130 8v4" stroke-width="2"/>
     </svg>
     <p class="lead">En sprogmodel kan forklare næsten alt på få sekunder. Men har du forstået det? Her forklarer du selv, pakker huskereglerne ud og får et tjekark, du kan tage med til en, der kan faget.</p>
+    <div class="dp"><span class="stamp">GÅ IKKE I PANIK</span><span class="q">Svaret er 42. Men hvad var spørgsmålet?</span></div>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Visninger">
@@ -292,6 +300,7 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
       <pre class="prompt" id="sheetprompt"></pre>
     </section>
   </div>
+  <p class="credit">Inspireret af Douglas Adams' »Håndbog for vakse galakseblaffere«. Der er svaret 42, men ingen har forstået spørgsmålet.</p>
 </div>
 
 <script>
@@ -489,7 +498,7 @@ $("send").addEventListener("click",function(){
     .then(function(){setBusy(false);});
     return;
   }
-  var out=bubble("assistant","Tænker …");
+  var out=bubble("assistant","Tænker … Det tager ikke syv en halv million år.");
   ctl=new AbortController(); setBusy(true);
   sample([{role:"user",content:context()}].concat(turns),opts({cache:false,signal:ctl.signal,onText:function(u){out.textContent=u.text;}}))
   .then(function(r){out.textContent=r.text;turns.push({role:"assistant",content:r.text});},
