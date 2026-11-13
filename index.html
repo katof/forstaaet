@@ -443,12 +443,13 @@ function relay(host,prompt,o){
       o.alt?h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn plain",text:"Jeg er startet på en ny chat",on:{click:function(){pt.value=o.alt;this.parentNode.hidden=true;}}})]):null,
       hasImg()?h("p",{class:"muted",text:"Upload også billedet i chatten, hvis den kan tage imod billeder."}):null,
       h("p",{class:"step",text:"2. Kopiér svaret fra chatten, og indsæt det her."}),
+      o.note?h("p",{class:"muted",text:o.note}):null,
       ans, err,
       h("div",{class:"btnrow"},[
         h("button",{type:"button",class:"btn",text:"Brug svaret",on:{click:function(){
           var t=ans.value.trim(), d=t;
           if(!t){err.textContent="Indsæt svaret fra chatten først.";err.hidden=false;return;}
-          if(o.json){try{d=looseJson(t);}catch(e){err.textContent="Svaret kunne ikke læses. Skriv til chatten: »Svar igen, præcis i den form, jeg bad om.« Indsæt så det nye svar.";err.hidden=false;return;}}
+          if(o.json){try{d=looseJson(t);}catch(e){if(o.soft){box.remove();res({raw:t});return;}err.textContent="Svaret kunne ikke læses. Skriv til chatten: »Svar igen, præcis i den form, jeg bad om.« Indsæt så det nye svar.";err.hidden=false;return;}}
           box.remove(); res(d);
         }}}),
         h("button",{type:"button",class:"btn plain",text:"Fortryd",on:{click:function(){box.remove();rej({code:"cancelled"});}}})
@@ -458,8 +459,8 @@ function relay(host,prompt,o){
   });
 }
 /* host's last child is the waiting line */
-function askJson(host,p,withImg){
-  if(man()){host.lastChild.textContent=WAIT;return relay(host,p,{json:true});}
+function askJson(host,p,withImg,soft){
+  if(man()){host.lastChild.textContent=WAIT;return relay(host,p,{json:true,soft:soft});}
   return withImg?sample.json(p,opts()):sample.json(p);
 }
 function context(){
@@ -470,7 +471,8 @@ function context(){
   return L.join("\n");
 }
 function transcript(){return turns.map(function(t){return (t.role==="user"?"NYBEGYNDER: ":"SPROGMODEL: ")+t.content;}).join("\n\n");}
-function mnemoText(m){return "Huskeregel: "+m.billede+"\n"+m.dele.map(function(x){return "- "+x.del+" står for: "+x.staar_for;}).join("\n")+(m.passer_ikke?"\nHer passer billedet ikke: "+m.passer_ikke:"");}
+function keyText(m){return m.key||(m.dele.map(function(x){return "- "+x.del+" står for: "+x.staar_for;}).join("\n")+(m.passer_ikke?"\nHer passer billedet ikke: "+m.passer_ikke:""));}
+function mnemoText(m){return "Huskeregel: "+m.billede+"\n"+keyText(m);}
 /* everything the model has shown the user */
 function modelSaid(){
   var L=turns.filter(function(t){return t.role==="assistant";}).map(function(t){return t.content;});
@@ -511,8 +513,46 @@ function extraBox(title){
   var box=h("div",{class:"sheet"},[h("h3",{text:title}),h("p",{class:"muted",text:"Tænker …"})]);
   $("extras").appendChild(box); return box;
 }
+function withChat(task){return context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\n"+task;}
+function notaskedOwn(box){
+  var t="Find op til 5 ting i materialet (ord, forkortelser, tegn, akser, dele af en figur), som vi ikke har talt om, og som betyder noget for at forstå materialet. Skriv dem som en kort liste med én linje om, hvorfor hver ting er værd at spørge om. Forklar dem ikke endnu.";
+  box.lastChild.textContent=WAIT;
+  relay(box,t,{alt:withChat(t)}).then(function(txt){
+    box.lastChild.remove(); skipped.push({element:txt,hvorfor:""});
+    box.appendChild(h("p",{class:"quote",text:txt}));
+    box.appendChild(h("p",{class:"muted",text:"Vil du vide mere om noget af det, så skriv det i feltet »Dit spørgsmål«."}));
+  },function(){box.remove();}).then(function(){setBusy(false);});
+}
+/* two plain questions: first only the mnemonic, then the key after the user's own unpacking */
+function mnemoOwn(box){
+  var t1="Lav én huskeregel (et billede eller en metafor) for hovedpointen i det, vi har talt om. Skriv kun selve huskereglen i én eller to sætninger. Vent med at forklare, hvad delene står for, til jeg beder om det, også selvom reglerne siger noget andet.";
+  var t2="Forklar nu huskereglen: Hvad står hver del af billedet for i faget? Brug fagets egne ord. Skriv også, hvor billedet ikke passer.";
+  box.lastChild.textContent=WAIT;
+  relay(box,t1,{alt:withChat(t1),note:"Skriver chatten mere end selve huskereglen, så indsæt kun huskereglen."}).then(function(txt){
+    box.lastChild.remove();
+    var ta=h("textarea",{id:"unpack-"+(mnemos.length+1),placeholder:"Skriv med dine egne ord: Hvad står hver del af billedet for?"});
+    var m={billede:txt,dele:[],passer_ikke:"",key:"",ta:ta,keyShown:false}; mnemos.push(m);
+    var err=h("p",{class:"err",hidden:"hidden",text:"Skriv din egen udpakning først."});
+    var keybox=h("div",{class:"stack tight"});
+    var btn=h("button",{type:"button",class:"btn plain",text:"Hent nøglen",on:{click:function(){
+      if(ta.value.trim().length<5){err.hidden=false;return;}
+      err.hidden=true; if(busy) return;
+      btn.disabled=true; setBusy(true);
+      relay(keybox,t2,{alt:withChat("HUSKEREGLEN: "+txt+"\n\n"+t2)}).then(function(k){
+        m.key=k; m.keyShown=true;
+        keybox.appendChild(h("span",{class:"label",text:"Nøglen"})); keybox.appendChild(h("p",{class:"quote",text:k}));
+      },function(){btn.disabled=false;}).then(function(){setBusy(false);});
+    }}});
+    box.appendChild(h("p",{class:"quote",text:txt}));
+    box.appendChild(h("div",{class:"field"},[h("label",{class:"label",for:ta.id,text:"Pak den ud, før du henter nøglen"}),ta]));
+    box.appendChild(err);
+    box.appendChild(h("div",{class:"btnrow"},[btn]));
+    box.appendChild(keybox);
+  },function(){box.remove();}).then(function(){setBusy(false);});
+}
 $("notasked").addEventListener("click",function(){
   var box=extraBox("Det spurgte du ikke om"); setBusy(true);
+  if(man()){notaskedOwn(box);return;}
   var p=context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\nOPGAVE: Find op til 5 ting i materialet (ord, forkortelser, tegn, akser, dele af en figur), som samtalen ikke har forklaret, og som betyder noget for at forstå materialet. Svar kun med et JSON-array af objekter: [{\"element\":\"det, der står i materialet\",\"hvorfor\":\"én kort sætning om, hvorfor det er værd at spørge om\"}]. Brug et tomt array, hvis alt er dækket.";
   askJson(box,p,true).then(function(d){
     box.lastChild.remove();
@@ -527,6 +567,7 @@ $("notasked").addEventListener("click",function(){
 });
 $("mnemo").addEventListener("click",function(){
   var box=extraBox("Huskeregel"); setBusy(true);
+  if(man()){mnemoOwn(box);return;}
   var p=context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\nOPGAVE: Lav én huskeregel (et billede eller en metafor) for hovedpointen i samtalen. Svar kun med ét JSON-objekt: {\"billede\":\"huskereglen i én eller to sætninger\",\"dele\":[{\"del\":\"en del af billedet\",\"staar_for\":\"det, den står for i faget, med fagets egne ord\"}],\"passer_ikke\":\"én sætning om, hvor billedet ikke passer\"}.";
   askJson(box,p,true).then(function(d){
     box.lastChild.remove(); d=d||{};
@@ -586,7 +627,13 @@ function renderSheet(target,d,src){
   if(src.meta) sheet.appendChild(h("p",{class:"muted",text:src.meta}));
   function detail(title,text){if(str(text).trim()) sheet.appendChild(h("details",{class:"src"},[h("summary",{text:title}),h("p",{text:text.trim()})]));}
   detail("Materialet",src.mat); detail("Hele brugerens forklaring",src.own); detail("Brugerens udpakning af huskeregler",src.unpack); detail("Alt, sprogmodellen har sagt",src.said);
-  if(!points.length) sheet.appendChild(h("p",{class:"note",text:"Teksterne er enige, men sammenhængen bør stadig kontrolleres."}));
+  var rawTa=null;
+  if(str(d.raw)){
+    rawTa=h("textarea",{class:"short",id:key+"-r",placeholder:"Skriv, hvad der er rigtigt, og hvorfor"});
+    sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Sprogmodellens sammenligning. Den kunne ikke deles op i punkter"}),h("p",{class:"quote",text:d.raw}),
+      h("div",{class:"field"},[h("label",{class:"label",for:rawTa.id,text:"Vurdering og begrundelse"}),rawTa])]));
+  }
+  else if(!points.length) sheet.appendChild(h("p",{class:"note",text:"Teksterne er enige, men sammenhængen bør stadig kontrolleres."}));
   points.forEach(function(x,i){
     var MARKS=[["✓","Holder"],["÷","Forkert"],["~","Mangler noget"],["?","Kan ikke vurderes"]];
     var row=h("div",{class:"marks",role:"group","aria-label":"Vurdering af brugerens udsagn"},MARKS.map(function(m){
@@ -625,7 +672,8 @@ function renderSheet(target,d,src){
     var L=["TJEKARK TIL FAGPERSONEN","Sprogmodellens svar er ikke facit.","Markering: ✓ holder · ÷ forkert · ~ mangler noget · ? kan ikke vurderes",""];
     if(src.meta) L.push(src.meta,"");
     points.forEach(function(x,i){L.push((i+1)+". Brugeren skrev: »"+str(x.bruger)+"«"+(x.oversat?" (oversat)":""),"   Sprogmodellen skrev: »"+str(x.model)+"«","   Mulig forskel: "+str(x.forskel),"   Spørgsmål: "+str(x.spoergsmaal),"   Markering: "+(state[i].mark||"[ ]"),"   Vurdering og begrundelse: "+(state[i].ta.value.trim()||""),"");});
-    if(!points.length) L.push("Teksterne er enige, men sammenhængen bør stadig kontrolleres.","");
+    if(rawTa) L.push("Sprogmodellens sammenligning:",d.raw,"Vurdering og begrundelse: "+rawTa.value.trim(),"");
+    else if(!points.length) L.push("Teksterne er enige, men sammenhængen bør stadig kontrolleres.","");
     if(enige.length) L.push("Her er teksterne enige. Det bør stadig kontrolleres:",enige.map(function(s){return "- "+s;}).join("\n"),"");
     if(kun.length) L.push("Det kan kun fagpersonen afgøre:",kun.map(function(s){return "- "+s;}).join("\n"),"");
     L.push("Overset af sprogmodellen: "+extra.value.trim(),"Samlet (1–5): "+(conf[key]||"ikke vurderet"),"");
@@ -641,7 +689,7 @@ function makeSheet(src,target,errId){
   showErr(errId,""); target.textContent=""; target.appendChild(h("p",{class:"muted",text:"Sammenligner …"})); setBusy(true);
   var p=SHEET_PROMPT+(str(src.mat).trim()?"\n\nMATERIALET:\n"+src.mat.trim():"")+"\n\nNYBEGYNDERENS FORKLARING:\n"+src.own.trim()+(str(src.unpack).trim()?"\n\nNYBEGYNDERENS UDPAKNING AF HUSKEREGLER:\n"+src.unpack.trim():"")+"\n\nALT, SPROGMODELLEN HAR SAGT:\n"+src.said.trim().slice(0,60000);
   src.check=true;
-  askJson(target,p,false).then(function(d){renderSheet(target,d,src);},function(e){target.textContent="";showErr(errId,errCopy(e&&e.code));})
+  askJson(target,p,false,true).then(function(d){renderSheet(target,d,src);},function(e){target.textContent="";showErr(errId,errCopy(e&&e.code));})
   .then(function(){setBusy(false);});
 }
 $("makesheet").addEventListener("click",function(){
@@ -657,7 +705,7 @@ function exportText(){
     "--- MIN FORKLARING FØR (sikker: "+(conf.a||"–")+") ---",val("own1"),"",
     "--- SAMTALEN ---",turns.map(function(t){return (t.role==="user"?"JEG: ":"SPROGMODEL: ")+t.content;}).join("\n\n"),""];
   if(skipped.length) L.push("--- DET SPURGTE JEG IKKE OM ---",skipped.map(function(x){return "- "+x.element+": "+x.hvorfor;}).join("\n"),"");
-  mnemos.forEach(function(m,i){L.push("--- HUSKEREGEL "+(i+1)+" ---",m.billede,"Min udpakning: "+m.ta.value.trim(),"Nøglen ("+(m.keyShown?"set":"ikke set")+"):",m.dele.map(function(x){return "- "+x.del+" = "+x.staar_for;}).join("\n"),"Her passer billedet ikke: "+m.passer_ikke,"");});
+  mnemos.forEach(function(m,i){L.push("--- HUSKEREGEL "+(i+1)+" ---",m.billede,"Min udpakning: "+m.ta.value.trim(),"Nøglen ("+(m.keyShown?"set":"ikke set")+"):",keyText(m),"");});
   L.push("--- MIN FORKLARING EFTER (sikker: "+(conf.b||"–")+") ---",val("own2"),peeked?"(Jeg så samtalen igen undervejs.)":"","",
     "--- FØR OG EFTER ---","Hvad kan jeg forklare nu? "+val("cmp1"),"Hvad har ændret sig? "+val("cmp2"),"Hvad er stadig uklart? "+val("cmp3"));
   if(val("later")) L.push("","--- MIN FORKLARING SENERE (sikker: "+(conf.c||"–")+") ---",val("later"));
