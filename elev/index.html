@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forstået? Fysik og kemi 7. klasse</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Pupil handbook, grades 7-9. Same notebook look as Forstået?: ink borders, square corners, hard shadows.
+   Three languages (da, fo, en) from the T table in the script. Everything stays in the pupil's browser. */
+:root{
+  --bg:#e9efec; --surface:#ffffff; --ink:#10202b; --muted:#4d5f69;
+  --sea:#1c5d99; --moss:#2c7a4b; --sun:#f4c531; --on-sun:#10202b;
+  --warn:#b3401f; --shadow:#10202b; --faint:#cfd9d5;
+  --display:"Bricolage Grotesque","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0e181e; --surface:#16242d; --ink:#e7eef0; --muted:#9bafb8; --sea:#7ab8f0; --moss:#73d09a;
+    --warn:#ff9a7a; --shadow:#000000; --faint:#2b3d47; color-scheme:dark}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;padding:28px 16px 64px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.stack{display:flex;flex-direction:column;gap:26px}
+.stack.tight{gap:14px}
+h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0;text-wrap:balance}
+h1{font-size:clamp(2.8rem,12vw,5rem);font-weight:800;letter-spacing:-.03em}
+h2{font-size:clamp(1.45rem,4.6vw,1.9rem);font-weight:800}
+h3{font-size:1.12rem;font-weight:600}
+p{margin:0}
+.eyebrow,.label,.num{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase}
+.eyebrow{color:var(--muted)}
+.label{display:block;color:var(--muted);margin-bottom:6px}
+.muted{color:var(--muted)}
+header.top{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
+header.top .lead{grid-column:1/-1;max-width:34em;font-size:1.1rem}
+header.top .dp,.langrow{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.strata{width:clamp(84px,24vw,150px);height:auto;color:var(--sea)}
+.strata .lines{opacity:.45}
+.strata text{font-family:var(--display);font-weight:800;font-size:74px;fill:var(--surface);stroke:var(--ink);stroke-width:3;paint-order:stroke;letter-spacing:-.04em}
+.stamp{display:inline-block;font-family:var(--display);font-weight:800;font-size:1.2rem;letter-spacing:.03em;background:var(--sun);color:var(--on-sun);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);padding:5px 14px;transform:rotate(-2deg)}
+.dp .q{font-family:var(--mono);font-size:.9rem}
+.lang{display:flex;border:2px solid var(--ink)}
+.lang button{font-family:var(--mono);font-weight:600;font-size:.8rem;padding:6px 11px;border:0;border-right:2px solid var(--ink);background:var(--surface);color:var(--muted);cursor:pointer}
+.lang button:last-child{border-right:0}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.credit{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--ink);background:var(--surface)}
+.tabs button{font-family:var(--display);font-weight:800;font-size:1rem;padding:11px 8px;border:0;border-right:2px solid var(--ink);background:none;color:var(--muted);cursor:pointer;min-width:0}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--sun);color:var(--on-sun)}
+.panel{background:var(--surface);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--shadow);padding:clamp(18px,4vw,26px);display:flex;flex-direction:column;gap:18px}
+.panel.flat{box-shadow:none}
+.phead{display:flex;gap:12px;align-items:baseline}
+.num{flex:none;border:2px solid var(--ink);padding:1px 7px;background:var(--ink);color:var(--surface)}
+.field{display:flex;flex-direction:column;min-width:0}
+textarea,input[type=text]{font:inherit;width:100%;padding:10px 12px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);border-radius:0;resize:vertical}
+textarea{min-height:5.4em}
+textarea.tall{min-height:9em}
+textarea.short{min-height:3.6em}
+:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{font-family:var(--display);font-weight:800;font-size:1.02rem;padding:10px 17px;border:2px solid var(--ink);background:var(--sun);color:var(--on-sun);cursor:pointer;box-shadow:4px 4px 0 var(--shadow);text-decoration:none;display:inline-block}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--shadow)}
+.btn.plain{background:var(--surface);color:var(--ink);box-shadow:none;font-family:var(--body);font-weight:500;font-size:.95rem;padding:8px 12px}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.err{color:var(--warn);font-weight:600;font-size:.95rem}
+.note{border-left:6px solid var(--sea);padding:4px 0 4px 12px}
+.quote{border:2px dashed var(--muted);padding:10px 12px;background:var(--bg);white-space:pre-wrap;overflow-wrap:anywhere}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:560px){.cols{grid-template-columns:1fr}}
+.profile{display:flex;align-items:flex-end;gap:6px;height:84px}
+.profile button{flex:1;min-width:0;border:2px solid var(--ink);border-bottom-width:4px;background:var(--faint);color:var(--ink);font-family:var(--display);font-weight:800;font-size:1.15rem;cursor:pointer;display:flex;align-items:flex-start;justify-content:center;padding-top:3px}
+.profile button:nth-child(1){height:36%}.profile button:nth-child(2){height:52%}.profile button:nth-child(3){height:68%}.profile button:nth-child(4){height:84%}.profile button:nth-child(5){height:100%}
+.profile button.on{background:var(--sea);color:var(--surface)}
+.profile-text{min-height:1.5em;font-size:.95rem;color:var(--muted);margin-top:8px}
+ul.plainlist,ol.plainlist{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+.sheet{border:2px solid var(--ink);background:var(--surface);padding:clamp(16px,4vw,24px);display:flex;flex-direction:column;gap:14px}
+.relay{border-style:dashed;background:var(--bg)}
+.relay textarea{background:var(--surface)}
+.item{border-top:2px solid var(--ink);padding-top:12px;display:grid;gap:10px}
+.marks{display:flex;flex-wrap:wrap;gap:8px}
+.marks button{min-width:44px;height:40px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);font-family:var(--display);font-weight:800;font-size:1.1rem;cursor:pointer}
+.marks button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.count{font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-top:6px}
+.count.over{color:var(--warn);font-weight:600}
+pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:.84rem;line-height:1.5}
+.goal{font-family:var(--mono);font-size:.8rem;line-height:1.5;border:2px dashed var(--muted);padding:8px 10px;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:.95rem;font-weight:500;text-align:left;padding:8px 12px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.check input{width:22px;height:22px;flex:none;margin:2px 0 0;accent-color:var(--sea)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:520px}
+th,td{border:2px solid var(--ink);padding:8px 10px;text-align:left;vertical-align:top}
+th{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:var(--bg)}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);border:2px solid var(--ink);background:var(--surface);counter-reset:s}
+.steps li{counter-increment:s;font-family:var(--display);font-weight:800;padding:9px 6px;text-align:center;border-right:2px solid var(--ink);color:var(--muted)}
+.steps li:last-child{border-right:0}
+.steps li::before{content:counter(s) " "}
+.steps li.on{background:var(--sun);color:var(--on-sun)}
+.steps li.done{background:var(--ink);color:var(--surface)}
+.goalrow{display:grid;gap:6px;padding:8px 0;border-top:2px solid var(--faint)}
+details.src{border:2px solid var(--faint);padding:8px 12px}
+details.src summary{cursor:pointer;font-weight:600}
+details.src ol{margin-top:8px}
+body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:none!important}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  body.printing .wrap>*:not(#view-bog), body.printing #view-bog>*:not(#sc-ark), body.printing #sc-ark>*:not(#sheet){display:none!important}
+  body.printing .panel{border:0;box-shadow:none;padding:0}
+  body.printing .btnrow{display:none}
+  body.printing textarea{border:1px solid #000;background:#fff;min-height:2.6em}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Fysik og kemi · 7. klasse</p>
+      <h1>Forstået?</h1>
+    </div>
+    <svg class="strata" viewBox="0 0 150 100" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <g class="lines"><path d="M4 22c30-8 50 6 76 0s40-8 66-2"/><path d="M4 40c28-6 52 8 78 2s38-10 64-4"/>
+      <path d="M4 58c30-8 48 6 74 0s42-8 68-2"/><path d="M4 76c26-6 54 8 80 2s36-10 62-4"/></g>
+      <text x="75" y="76" text-anchor="middle">42</text>
+      <path d="M12 12h6M15 9v6M134 88h6M137 85v6M128 10h4M130 8v4"/>
+    </svg>
+    <div class="dp"><span class="stamp">GÅ IKKE I PANIK</span><span class="q">Svaret er 42. Men hvad var spørgsmålet?</span></div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-bog" aria-controls="view-bog" aria-selected="true">Håndbogen</button>
+    <button type="button" role="tab" id="tab-hvi" aria-controls="view-hvi" aria-selected="false">Hvorfor 42?</button>
+    <button type="button" role="tab" id="tab-lar" aria-controls="view-lar" aria-selected="false">Til læreren</button>
+  </div>
+
+  <div class="stack" id="view-bog" role="tabpanel" aria-labelledby="tab-bog">
+    <ol class="steps" id="steps" aria-label="Fire trin">
+      <li>Gæt</li><li>Gør</li><li>Spørg</li><li>Forklar</li>
+    </ol>
+
+    <!-- start: choose a topic -->
+    <section class="panel" id="sc-start">
+      <h2>Vælg et emne</h2>
+      <p class="muted">Du gætter, laver et forsøg, spørger en sprogmodel om dine egne tal og forklarer til sidst med 42 ord. Det, du skriver, bliver kun gemt i denne browser.</p>
+      <div class="field"><span class="label">Område</span><div class="chips" id="areas"></div></div>
+      <div class="field" id="topicfield" hidden><span class="label">Emne</span><div class="chips" id="topics"></div></div>
+      <div id="ownbox" class="stack tight" hidden>
+        <div class="field"><label class="label" for="ownq">Spørgsmålet, du skal undersøge</label><input type="text" id="ownq"></div>
+        <div class="field"><label class="label" for="ownexp">Forsøget, du skal lave</label><textarea id="ownexp" class="short"></textarea></div>
+      </div>
+      <div id="card"></div>
+    </section>
+
+    <!-- 1: guess -->
+    <section class="panel" id="sc-1" hidden>
+      <div class="phead"><span class="num">1</span><h2>Gæt</h2></div>
+      <p class="quote" data-q></p>
+      <p class="muted">Skriv, hvad du tror, og hvorfor. Du må gerne gætte forkert. Spørg ikke sprogmodellen endnu.</p>
+      <div class="field"><label class="label" for="hyp">Jeg tror, at … fordi …</label><textarea id="hyp" class="short"></textarea></div>
+      <div class="field"><span class="label">Hvor sikker er du?</span><div id="conf1"></div></div>
+    </section>
+
+    <!-- 2: do -->
+    <section class="panel" id="sc-2" hidden>
+      <div class="phead"><span class="num">2</span><h2>Gør</h2></div>
+      <div id="expbox" class="stack tight"></div>
+      <label class="check"><input type="checkbox" id="ok"><span>Min lærer har sagt ja til forsøget, og jeg har læst, hvad jeg skal passe på.</span></label>
+      <div class="field"><label class="label" for="obs">Det så og målte jeg (skriv tallene med enheder)</label><textarea id="obs"></textarea></div>
+      <p class="note">En sprogmodel kan ikke lave forsøget og kan ikke se, hvad der sker. Tallene skal være dine egne.</p>
+    </section>
+
+    <!-- 3: ask about your own numbers -->
+    <section class="panel" id="sc-3" hidden>
+      <div class="phead"><span class="num">3</span><h2>Spørg om dine egne tal</h2></div>
+      <p class="muted">Siden har lavet en tekst med dit gæt og dine tal. Sprogmodellen må ikke give dig svaret. Den stiller spørgsmål, så du selv kan finde det.</p>
+      <div id="rounds" class="stack tight"></div>
+    </section>
+
+    <!-- 4: explain -->
+    <section class="panel" id="sc-4" hidden>
+      <div class="phead"><span class="num">4</span><h2>Forklar med 42 ord</h2></div>
+      <p class="quote" data-q></p>
+      <p class="muted">Svar på spørgsmålet med højst 42 ord. Brug dine tal og de fagord, du har lært. Du kan ikke se sprogmodellens svar her, så det skal være dine egne ord.</p>
+      <div class="field"><label class="label" for="kort">Min forklaring</label><textarea id="kort"></textarea><p class="count" id="count"></p></div>
+      <div class="field"><label class="label" for="home" id="homelabel"></label><textarea id="home" class="short"></textarea></div>
+      <div class="field"><span class="label">Hvor sikker er du nu?</span><div id="conf2"></div></div>
+    </section>
+
+    <!-- the teacher's sheet -->
+    <section class="panel" id="sc-ark" hidden>
+      <h2>Vis det til din lærer</h2>
+      <p class="muted">Her er det, du har lavet. Skriv dit navn, og lav et link, som du sender til din lærer. Læreren åbner linket og ser dit ark.</p>
+      <div class="field"><label class="label" for="navn">Dit navn og din klasse</label><input type="text" id="navn" autocomplete="off"></div>
+      <div class="btnrow"><button type="button" class="btn" id="linkbtn">Lav link til din lærer</button></div>
+      <div id="linkbox" class="sheet relay" hidden>
+        <p class="muted">Send linket til din lærer, fx i en besked. Arket ligger i selve linket og bliver ikke gemt andre steder.</p>
+        <input type="text" id="link" readonly aria-label="Link til læreren">
+        <div class="btnrow"><button type="button" class="btn plain" id="linkcopy">Kopiér linket</button></div>
+      </div>
+      <div id="sheet"></div>
+      <h3>Prøv igen om en uge</h3>
+      <p class="muted">Det er frivilligt. Det, du kan forklare efter en uge, har du lært. Skriv forklaringen en gang til, før du ser den gamle.</p>
+      <div class="field"><label class="label" for="later">Min forklaring en uge efter</label><textarea id="later" class="short"></textarea></div>
+      <div class="btnrow"><button type="button" class="btn plain" id="laterbtn">Vis min gamle forklaring</button></div>
+      <div id="laterbox" class="cols" hidden>
+        <div class="field"><span class="label">Dengang</span><p class="quote" id="later-a"></p></div>
+        <div class="field"><span class="label">Nu</span><p class="quote" id="later-b"></p></div>
+      </div>
+    </section>
+
+    <p class="err" id="naverr" role="alert" hidden></p>
+    <div class="btnrow" id="nav">
+      <button type="button" class="btn plain" id="back">Tilbage</button>
+      <button type="button" class="btn" id="next">Videre</button>
+      <button type="button" class="btn plain" id="newbtn">Start et nyt emne</button>
+    </div>
+  </div>
+
+  <div class="stack" id="view-hvi" role="tabpanel" aria-labelledby="tab-hvi" hidden>
+    <section class="panel flat">
+      <h2>Hvorfor 42?</h2>
+      <p>I bogen »Håndbog for vakse galakseblaffere« af Douglas Adams bygger nogen en kæmpestor computer. Den skal finde svaret på det store spørgsmål om livet, universet og alting. Den regner i syv en halv million år. Så kommer svaret: 42.</p>
+      <p>Ingen kan bruge svaret til noget, for ingen ved, hvad spørgsmålet egentlig var.</p>
+      <p>Sådan kan det også gå med en sprogmodel. Du får et svar på få sekunder, og det lyder rigtigt. Men et svar er kun noget værd, hvis du forstår spørgsmålet, har set efter selv og kan forklare, hvorfor svaret passer.</p>
+      <p>Derfor slutter håndbogen med 42 ord. Kan du forklare det med 42 ord, har du selv fat i det.</p>
+    </section>
+    <section class="panel flat">
+      <h2>Tre ting at huske</h2>
+      <ol class="plainlist">
+        <li>Gæt, før du spørger. Et gæt viser dig, hvad du ikke vidste.</li>
+        <li>En sprogmodel kan ikke måle, se efter eller passe på dig. Forsøget og tallene er dine.</li>
+        <li>Et svar er ikke det samme som at forstå. Du har først forstået det, når du selv kan forklare det.</li>
+      </ol>
+    </section>
+  </div>
+
+  <div class="stack" id="view-lar" role="tabpanel" aria-labelledby="tab-lar" hidden>
+    <section class="panel flat">
+      <h2>Til læreren</h2>
+      <p>Håndbogen bygger på de seks faglige mål for 7. klassetrin i den færøske læreplan for alis- og evnafrøði (fysik og kemi). Eleven vælger et emne fra et af fagets fire kerneområder og går fire trin igennem: gæt, gør, spørg, forklar. Det passer til én lektion, hvis forsøget er stillet frem.</p>
+      <p>Sprogmodellen kommer først ind efter forsøget. Den får elevens hypotese og tal og må ikke give forklaringen. Den stiller højst tre spørgsmål og nævner de fagord, eleven mangler. Siden spørger ikke selv en sprogmodel: eleven kopierer teksten ind i den chat, skolen bruger, og indsætter svaret.</p>
+      <p>Til sidst får du ét ark med hypotesen, tallene, sprogmodellens spørgsmål, elevens svar og forklaringen på 42 ord. Nederst står de seks mål, og det er dig, der krydser af. Det, eleven skriver, bliver kun gemt i elevens browser.</p>
+      <p class="note">Emnerne og forsøgene er forslag skrevet til håndbogen. De står ikke i læreplanen. Læs sikkerhedsnoterne, før eleverne går i gang, og brug »Andet emne« til jeres eget forsøg.</p>
+    </section>
+    <section class="panel flat">
+      <h2>De seks mål</h2>
+      <ol class="plainlist" id="goallist"></ol>
+      <details class="src"><summary>Læreplanens egen ordlyd (færøsk, fra namsaetlanir.fo)</summary><ol class="plainlist" id="goalfo" lang="fo"></ol></details>
+    </section>
+    <section class="panel flat">
+      <h2>Reglerne, sprogmodellen får</h2>
+      <pre class="prompt" id="rules"></pre>
+    </section>
+  </div>
+
+  <p class="credit">Inspireret af Douglas Adams' »Håndbog for vakse galakseblaffere«. Der er svaret 42, men ingen har forstået spørgsmålet.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+
+/* The six subject goals for 7. floksstig in Alis- og evnafrøði, word for word from namsaetlanir.fo (read 19.11.2026),
+   and the handbook's Danish paraphrase. The teacher ticks them on the sheet. */
+var GOALS_FO=[
+ "at nýta hóskandi hugtøk, eindir og modell til at lýsa alisfrøðilig og evnafrøðilig fyribrigdi",
+ "at eksperimentera, eygleiða og koma til møguligar loysnir við støði í givnum greiðsluevni",
+ "at seta spurningar og gera hypotesur, savna inn upplýsingar, greina úrslit og finna møgulig svar",
+ "at viðgera og greina vitan og grundgeva fyri úrslitum",
+ "at seta orð á, hvussu alis- og evnafrøðilig fyribrigdi síggjast/verða nýtt í gerandishøpi",
+ "at lesa og skilja vandamerking og grunda um trygd í sambandi við royndir"];
+var GOALS=[
+ "Bruger passende begreber, enheder og modeller til at beskrive det, der sker",
+ "Eksperimenterer, iagttager og kommer frem til mulige løsninger",
+ "Stiller spørgsmål og laver hypoteser, samler oplysninger og ser på resultaterne",
+ "Arbejder med sin viden og begrunder sine resultater",
+ "Sætter ord på, hvor man ser eller bruger det i hverdagen",
+ "Læser og forstår faremærker og tænker over sikkerheden"];
+var TM=[["y","Kan"],["p","På vej"],["n","Ikke vist"]];
+
+var AREAS=[["o","Energi og energiomdannelse",["o1","o2"]],["e","Elektricitet og magnetisme",["e1","e2"]],["a","Atomer",["a1","a2"]],["r","Kemiske reaktioner",["r1","r2"]],["x","Andet emne",[]]];
+var TP={
+ o1:{n:"En bold, der hopper",q:"Hvor bliver energien af, når en bold hopper lavere og lavere?",
+  need:"En bold, et målebånd eller en lineal og en væg, du kan måle op ad.",
+  exp:"Slip bolden fra 1 meters højde. Mål, hvor højt den hopper første, anden og tredje gang. Gør det hele tre gange, og skriv alle tallene ned.",
+  safe:"Ryd gulvet, så bolden ikke rammer noget.",home:"Hvor bliver én form for energi til en anden hjemme hos dig?"},
+ o2:{n:"Varme, der flytter sig",q:"Hvorfor bliver varmt vand koldt, og hvad gør et låg?",
+  need:"To ens kopper, et låg, et termometer og et ur.",
+  exp:"Hæld lige meget varmt vand fra hanen i de to kopper. Læg låg på den ene. Mål temperaturen i begge hvert andet minut i ti minutter.",
+  safe:"Brug varmt vand fra hanen, ikke kogende vand.",home:"Hvor holder I på varmen derhjemme, og hvordan?"},
+ e1:{n:"Et elektrisk kredsløb",q:"Hvad skal der til, for at en pære lyser?",
+  need:"Et batteri, to små pærer med fatning og ledninger.",
+  exp:"Byg et kredsløb, så én pære lyser. Tag en ledning fra, og se, hvad der sker. Sæt så to pærer efter hinanden. Lyser de stærkere eller svagere end før?",
+  safe:"Brug kun batterier. En stikkontakt må aldrig bruges til forsøg. Forbind ikke batteriets to poler direkte med hinanden.",home:"Hvor er der et kredsløb med en afbryder hjemme hos dig?"},
+ e2:{n:"En elektromagnet",q:"Hvordan kan strøm lave en magnet?",
+  need:"Et stort søm, isoleret ledning, et batteri og en håndfuld clips.",
+  exp:"Vikl ledningen 10 gange om sømmet, og sæt enderne til batteriet. Tæl, hvor mange clips sømmet kan løfte. Prøv igen med 20 vindinger.",
+  safe:"Ledningen kan blive varm. Tag batteriet fra efter få sekunder. Brug kun batterier.",home:"Hvor bruger man elektromagneter?"},
+ a1:{n:"Hvordan et atom er bygget",q:"Hvad består et atom af, og hvor sidder delene?",
+  need:"Papir og farver, eller perler og modellervoks.",
+  exp:"Atomer kan du ikke se, så her er modellen dit forsøg. Byg eller tegn en model af et kulstofatom med 6 protoner, 6 neutroner og 6 elektroner. Skriv tre ting, din model viser forkert.",
+  safe:"Der er ingen særlige farer.",home:"Nævn tre ting omkring dig. Hvilke grundstoffer tror du, der er i dem?"},
+ a2:{n:"Det periodiske system",q:"Hvordan er grundstofferne ordnet i det periodiske system?",
+  need:"Et periodisk system og tre ting af metal, fx alufolie, et søm og en kobberledning.",
+  exp:"Find grundstoffet i hver af de tre ting. Find det i det periodiske system, og skriv nummer, symbol og gruppe. Hvad har de tre til fælles?",
+  safe:"Se på tingene, men smag ikke på noget. Åbn aldrig et batteri.",home:"Hvilke grundstoffer står der på varedeklarationer hjemme hos dig?"},
+ r1:{n:"Syrer og baser",q:"Hvordan kan man se, om noget er surt eller basisk?",
+  need:"Rødkål, varmt vand, fem glas, eddike, citronsaft, natron og håndsæbe.",
+  exp:"Lad snittet rødkål trække i varmt vand, til vandet er farvet. Hæld lidt i fem glas. Tilsæt eddike, citronsaft, vand, natron opløst i vand og sæbevand, én ting i hvert glas. Skriv farven ned.",
+  safe:"Brug kun madvarer og håndsæbe. Brug aldrig rengøringsmidler. Smag ikke på noget. Læs faremærkerne, hvis der er nogen på emballagen.",home:"Hvilke ting i køkkenet er sure, og hvilke er basiske?"},
+ r2:{n:"Forbrænding",q:"Hvad skal der til, for at noget brænder?",
+  need:"Et fyrfadslys, et lille og et stort glas, et ur og et underlag, der ikke kan brænde.",
+  exp:"Tænd lyset, og sæt det lille glas over. Tag tid, til flammen går ud. Prøv igen med det store glas. Gør det tre gange med hvert glas.",
+  safe:"Kun sammen med din lærer. Bind langt hår op. Glasset bliver varmt. Hav vand i nærheden.",home:"Hvor brænder noget hjemme hos dig, og hvor kommer luften fra?"}
+};
+var SCALE=["","Jeg gætter bare.","Jeg er meget i tvivl.","Jeg tror det, men er ikke sikker.","Jeg er ret sikker.","Jeg kan forklare det for en kammerat."];
+var RULES=[
+ "Du hjælper en elev i 7. klasse i fysik og kemi. Eleven har lavet et forsøg og skal selv finde forklaringen. Følg disse regler:",
+ "1. Giv ikke forklaringen, og giv ikke svaret på spørgsmålet.",
+ "2. Se på elevens gæt og tal. Stil højst tre korte spørgsmål, der hjælper eleven med at se, hvad tallene viser, og om gættet holder.",
+ "3. Nævn ét eller to fagord, eleven får brug for, og forklar hvert ord i én sætning.",
+ "4. Find ikke på tal, og ret ikke elevens tal. Ser tallene mærkelige ud, så spørg, hvordan eleven målte.",
+ "5. Skriv på dansk, højst 120 ord, uden markdown, i et sprog en 13-årig forstår.",
+ "6. Giv ingen råd om sikkerhed. Henvis til læreren."].join("\n");
+var CHATS=[["Åbn SkoleGPT","https://skolegpt.dk/"],["Åbn Copilot","https://m365.cloud.microsoft/chat"]];
+
+/* ---- state, kept in this browser only ---- */
+var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn"], ORDER=["start",1,2,3,4,"ark"];
+function fresh(){return {step:"start",area:"",topic:"",f:{},conf:{a:0,b:0},ok:false,rounds:[{a:"",mine:""}]};}
+/* a link from a pupil (#a=...) carries the whole sheet; the teacher ticks the goals in the teacher's own browser */
+var TEACHER=null, TS={tm:["","","","","",""],note:"",by:""};
+function pack(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+function unpack(t){t=t.replace(/-/g,"+").replace(/_/g,"/");while(t.length%4) t+="=";return JSON.parse(decodeURIComponent(escape(atob(t))));}
+(function(){var m=location.hash.match(/^#a=(.+)$/); if(!m) return; try{TEACHER=unpack(m[1]);}catch(e){TEACHER={bad:true};}})();
+var S=fresh();
+try{var saved=JSON.parse(localStorage.getItem(KEY)||"null"); if(saved&&typeof saved==="object"){for(var k in saved) S[k]=saved[k];}}catch(e){}
+if(!Array.isArray(S.rounds)||!S.rounds.length) S.rounds=[{a:"",mine:""}];
+if(!S.conf) S.conf={a:0,b:0};
+if(ORDER.indexOf(S.step)<0) S.step="start";
+function store(){
+  if(TEACHER) return;
+  FIELDS.forEach(function(id){S.f[id]=$(id).value;}); S.ok=$("ok").checked;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+}
+var timer=null;
+document.addEventListener("input",function(){clearTimeout(timer);timer=setTimeout(store,400);});
+
+function h(tag,attrs,kids){
+  var el=document.createElement(tag),k;
+  if(attrs) for(k in attrs){
+    if(k==="text") el.textContent=attrs[k];
+    else if(k==="on") for(var ev in attrs.on) el.addEventListener(ev,attrs.on[ev]);
+    else if(attrs[k]!==null&&attrs[k]!==undefined&&attrs[k]!==false) el.setAttribute(k,attrs[k]);
+  }
+  (kids||[]).forEach(function(c){if(c) el.appendChild(typeof c==="string"?document.createTextNode(c):c);});
+  return el;
+}
+function val(id){return $(id).value.trim();}
+function words(s){s=s.trim();return s?s.split(/\s+/).length:0;}
+function chip(label,on,click){return h("button",{type:"button","aria-pressed":String(on),text:label,on:{click:click}});}
+function block(label,text,cls){return h("div",{class:"field"},[h("span",{class:"label",text:label}),h("p",{class:cls||null,text:text||"–"})]);}
+function copy(btn,label,txt){
+  function ok(){btn.textContent="Kopieret";setTimeout(function(){btn.textContent=label;},2000);}
+  try{navigator.clipboard.writeText(txt).then(ok,function(){});}catch(e){}
+}
+
+/* ---- the chosen topic ---- */
+function topic(){
+  if(S.area==="x") return val("ownq")?{n:val("ownq"),q:val("ownq"),need:"",exp:val("ownexp"),safe:"Spørg din lærer, hvad du skal passe på i dette forsøg.",home:"Hvor har du selv set det, du har undersøgt?"}:null;
+  return TP[S.topic]||null;
+}
+function areaName(){var a=AREAS.filter(function(x){return x[0]===S.area;})[0]; return a?a[1]:"";}
+function drawPick(){
+  var a=$("areas"), tp=$("topics"), card=$("card"), p=topic(); a.textContent=""; tp.textContent=""; card.textContent="";
+  AREAS.forEach(function(x){a.appendChild(chip(x[1],S.area===x[0],function(){S.area=x[0];S.topic="";drawPick();store();}));});
+  var cur=AREAS.filter(function(x){return x[0]===S.area;})[0];
+  $("topicfield").hidden=!cur||!cur[2].length; $("ownbox").hidden=S.area!=="x";
+  if(cur) cur[2].forEach(function(id){tp.appendChild(chip(TP[id].n,S.topic===id,function(){S.topic=id;drawPick();store();}));});
+  if(p&&S.area!=="x") card.appendChild(h("div",{class:"sheet"},[h("h3",{text:p.n}),block("Det skal du finde ud af",p.q),block("Det skal du bruge",p.need)]));
+}
+
+/* ---- confidence 1-5 ---- */
+function profile(box,key){
+  box.textContent="";
+  box.appendChild(h("div",{class:"profile",role:"group"},[1,2,3,4,5].map(function(n){
+    return h("button",{type:"button",class:n<=S.conf[key]?"on":"","aria-pressed":String(n===S.conf[key]),"aria-label":n+": "+SCALE[n],text:String(n),
+      on:{click:function(){S.conf[key]=S.conf[key]===n?0:n;profile(box,key);store();}}});
+  })));
+  box.appendChild(h("p",{class:"profile-text",text:S.conf[key]?SCALE[S.conf[key]]:"Vælg et tal fra 1 til 5."}));
+}
+
+/* ---- step 3: the pupil's own guess and numbers go to the chat; the model asks, it does not answer ---- */
+function prompt(i){
+  var p=topic(), P=[RULES,"","EMNE: "+areaName()+(S.area==="x"?"":": "+p.n),"SPØRGSMÅLET, ELEVEN SKAL SVARE PÅ: "+p.q];
+  if(p.exp) P.push("FORSØGET, ELEVEN LAVEDE: "+p.exp);
+  P.push("ELEVENS GÆT FØR FORSØGET: "+val("hyp"),"DET SÅ OG MÅLTE ELEVEN: "+val("obs"));
+  if(i>0) P.push("","DINE SPØRGSMÅL SIDST:",S.rounds[0].a,"","ELEVENS SVAR:",S.rounds[0].mine,"",
+    "Sig kort, hvad der passer i elevens svar, og hvad eleven skal tænke mere over. Giv stadig ikke hele forklaringen. Stil højst to nye spørgsmål.");
+  return P.join("\n");
+}
+function drawRounds(){
+  var host=$("rounds"); host.textContent="";
+  S.rounds.forEach(function(r,i){
+    var pt=h("textarea",{class:"tall",readonly:"readonly",id:"pr-"+i}); pt.value=prompt(i);
+    var cp=h("button",{type:"button",class:"btn",text:"Kopiér teksten",on:{click:function(){pt.value=prompt(i);copy(cp,"Kopiér teksten",pt.value);}}});
+    var a=h("textarea",{class:"tall",id:"ra-"+i,placeholder:"Indsæt svaret fra chatten her"}); a.value=r.a;
+    a.addEventListener("input",function(){r.a=a.value;});
+    var m=h("textarea",{id:"rm-"+i}); m.value=r.mine; m.addEventListener("input",function(){r.mine=m.value;});
+    host.appendChild(h("div",{class:"sheet relay"},[
+      h("div",{class:"field"},[h("label",{class:"label",for:pt.id,text:i?"Ny tekst til chatten, med dine svar":"1. Kopiér teksten ind i den chat, I bruger i skolen"}),pt]),
+      h("div",{class:"btnrow"},[cp].concat(CHATS.map(function(c){return h("a",{class:"btn plain",href:c[1],target:"_blank",rel:"noopener",text:c[0]});}))),
+      h("div",{class:"field"},[h("label",{class:"label",for:a.id,text:i?"Det skrev sprogmodellen":"2. Indsæt det, sprogmodellen skrev"}),a]),
+      h("div",{class:"field"},[h("label",{class:"label",for:m.id,text:i?"Det tænker jeg nu":"3. Svar på dens spørgsmål med dine egne ord"}),m])]));
+  });
+  if(S.rounds.length<2) host.appendChild(h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn plain",text:"Spørg en gang til med mine svar",on:{click:function(){
+    if(S.rounds[0].a.trim().length<10||S.rounds[0].mine.trim().length<10){err("Indsæt sprogmodellens svar, og svar på dens spørgsmål først.");return;}
+    err(""); S.rounds.push({a:"",mine:""}); drawRounds(); store();
+  }}})]));
+}
+
+/* ---- the 42 words ---- */
+function count(){
+  var n=words($("kort").value), c=$("count");
+  c.textContent=n>42?n+" ord. Det er "+(n-42)+" for mange.":n+" af 42 ord";
+  c.className="count"+(n>42?" over":"");
+}
+$("kort").addEventListener("input",count);
+
+/* ---- the sheet: one page. The pupil sends it as a link; the teacher ticks the six goals ---- */
+function snap(){
+  var p=topic();
+  return {v:1,navn:val("navn"),emne:areaName()+(S.area==="x"?"":": "+p.n),q:p.q,hyp:val("hyp"),ca:S.conf.a,obs:val("obs"),
+    r:S.rounds.map(function(r){return [r.a.trim(),r.mine.trim()];}).filter(function(x){return x[0]||x[1];}),kort:val("kort"),cb:S.conf.b,home:val("home")};
+}
+function drawSheet(){
+  var host=$("sheet"); host.textContent="";
+  if(TEACHER&&TEACHER.bad){host.appendChild(h("div",{class:"sheet"},[h("h3",{text:"Linket kan ikke læses"}),h("p",{class:"err",text:"Bed eleven om at kopiere hele linket og sende det igen."})]));return;}
+  if(!TEACHER&&!topic()) return;
+  var D=TEACHER||snap(), R=Array.isArray(D.r)?D.r:[];
+  var sheet=h("div",{class:"sheet"},[h("h3",{text:TEACHER?"Ark fra "+(D.navn||"en elev"):"Dit ark"}),
+    block("Emne",D.emne), block("Spørgsmålet",D.q),
+    block("1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":""),D.hyp,"quote"),
+    block("2. Det så og målte eleven",D.obs,"quote")]);
+  R.forEach(function(r,i){
+    sheet.appendChild(block("3. Sprogmodellen spurgte"+(i?" (anden gang)":""),r[0],"quote"));
+    sheet.appendChild(block("Elevens svar",r[1],"quote"));
+  });
+  sheet.appendChild(block("4. Elevens forklaring med "+words(String(D.kort||""))+" ord"+(D.cb?" (sikker: "+D.cb+" af 5)":""),D.kort,"quote"));
+  sheet.appendChild(block("I hverdagen",D.home,"quote"));
+  if(!TEACHER){
+    sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Det ser din lærer efter"}),h("ol",{class:"plainlist"},GOALS.map(function(g){return h("li",{text:g+"."});}))]));
+    host.appendChild(sheet); return;
+  }
+  var goals=h("div",{class:"item"},[h("span",{class:"label",text:"Sæt kryds ved målene. »Ikke vist« betyder, at forløbet ikke viste det."})]);
+  GOALS.forEach(function(g,i){
+    goals.appendChild(h("div",{class:"goalrow"},[h("p",{text:(i+1)+". "+g}),
+      h("div",{class:"chips",role:"group","aria-label":g},TM.map(function(m){return chip(m[1],TS.tm[i]===m[0],function(){TS.tm[i]=TS.tm[i]===m[0]?"":m[0];drawSheet();});}))]));
+  });
+  sheet.appendChild(goals);
+  var note=h("textarea",{class:"short",id:"sh-note"}); note.value=TS.note; note.addEventListener("input",function(){TS.note=note.value;});
+  var by=h("input",{type:"text",id:"sh-by"}); by.value=TS.by; by.addEventListener("input",function(){TS.by=by.value;});
+  sheet.appendChild(h("div",{class:"item"},[h("div",{class:"field"},[h("label",{class:"label",for:"sh-note",text:"Kommentar til eleven"}),note]),
+    h("div",{class:"field"},[h("label",{class:"label",for:"sh-by",text:"Lærer"}),by])]));
+  var cp=h("button",{type:"button",class:"btn plain",text:"Kopiér arket med mine kryds",on:{click:function(){
+    var X=["FORSTÅET? – ARK FRA "+String(D.navn||"en elev").toUpperCase(),"Emne: "+D.emne,"Spørgsmålet: "+D.q,"",
+      "1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":"")+": "+D.hyp,"2. Det så og målte eleven: "+D.obs];
+    R.forEach(function(r){X.push("3. Sprogmodellen spurgte: "+r[0],"   Elevens svar: "+r[1]);});
+    X.push("4. Elevens forklaring ("+words(String(D.kort||""))+" ord"+(D.cb?", sikker: "+D.cb+" af 5":"")+"): "+D.kort,"I hverdagen: "+D.home,"","Målene:");
+    GOALS.forEach(function(g,i){var m=TM.filter(function(x){return x[0]===TS.tm[i];})[0]; X.push("["+(m?m[1]:" ")+"] "+g);});
+    X.push("","Kommentar til eleven: "+TS.note,"Lærer: "+TS.by);
+    copy(cp,"Kopiér arket med mine kryds",X.join("\n"));
+  }}});
+  sheet.appendChild(h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Udskriv arket",on:{click:function(){
+    document.body.classList.add("printing"); window.print(); setTimeout(function(){document.body.classList.remove("printing");},500);
+  }}}),cp]));
+  host.appendChild(sheet);
+}
+$("navn").addEventListener("input",function(){$("linkbox").hidden=true;drawSheet();});
+$("linkbtn").addEventListener("click",function(){
+  if(val("navn").length<2){err("Skriv dit navn først, så din lærer kan se, hvem arket er fra.");return;}
+  err(""); $("link").value=location.origin+location.pathname+"#a="+pack(snap()); $("linkbox").hidden=false; $("link").focus(); $("link").select();
+});
+$("linkcopy").addEventListener("click",function(){copy(this,"Kopiér linket",$("link").value);});
+$("laterbtn").addEventListener("click",function(){
+  if(val("later").length<5){err("Skriv din forklaring først, også selvom du ikke husker det hele.");return;}
+  err(""); $("later-a").textContent=val("kort"); $("later-b").textContent=val("later"); $("laterbox").hidden=false;
+});
+
+/* ---- one step at a time; nothing moves on until something is written ---- */
+function err(msg){$("naverr").textContent=msg;$("naverr").hidden=!msg;}
+function check(step){
+  if(step==="start") return topic()?"":(S.area==="x"?"Skriv det spørgsmål, du skal undersøge.":"Vælg et område og et emne først.");
+  if(step===1) return val("hyp").length<10?"Skriv dit gæt først. Det er helt i orden at gætte.":"";
+  if(step===2) return !$("ok").checked?"Du skal have din lærers ja, før du laver forsøget.":val("obs").length<5?"Skriv, hvad du så og målte.":"";
+  if(step===3) return S.rounds[0].a.trim().length<10?"Indsæt sprogmodellens svar først.":S.rounds[0].mine.trim().length<10?"Svar på sprogmodellens spørgsmål med dine egne ord.":"";
+  if(step===4){var n=words($("kort").value); return n<8?"Skriv din forklaring. Brug mindst otte ord.":n>42?"Du har brugt for mange ord. Skær ned til 42.":"";}
+  return "";
+}
+function show(){
+  if(TEACHER){ORDER.forEach(function(x){$("sc-"+x).hidden=x!=="ark";});document.body.classList.add("laerer");drawSheet();return;}
+  var p=topic(), i=ORDER.indexOf(S.step);
+  ORDER.forEach(function(s){$("sc-"+s).hidden=s!==S.step;});
+  Array.prototype.forEach.call($("steps").children,function(li,n){li.className=S.step==="ark"||n+1<S.step?"done":n+1===S.step?"on":"";if(n+1===S.step) li.setAttribute("aria-current","step"); else li.removeAttribute("aria-current");});
+  Array.prototype.forEach.call(document.querySelectorAll("[data-q]"),function(el){el.textContent=p?p.q:"";});
+  $("back").hidden=i===0; $("next").hidden=S.step==="ark"; $("newbtn").hidden=S.step!=="ark";
+  $("next").textContent=S.step==="start"?"Start":S.step===4?"Lav arket til læreren":"Videre";
+  if(S.step==="start") drawPick();
+  if(S.step===2){var e=$("expbox"); e.textContent=""; if(p){if(p.need) e.appendChild(block("Det skal du bruge",p.need)); if(p.exp) e.appendChild(block("Sådan gør du",p.exp)); e.appendChild(h("div",{class:"note"},[block("Pas på",p.safe)]));}}
+  if(S.step===3) drawRounds();
+  if(S.step===4){$("homelabel").textContent=p?p.home:""; count();}
+  if(S.step==="ark") drawSheet();
+  err("");
+}
+$("next").addEventListener("click",function(){
+  var m=check(S.step); if(m){err(m);return;}
+  S.step=ORDER[ORDER.indexOf(S.step)+1]; show(); store(); $("steps").scrollIntoView();
+});
+$("back").addEventListener("click",function(){S.step=ORDER[Math.max(0,ORDER.indexOf(S.step)-1)]; show(); store(); $("steps").scrollIntoView();});
+var sure=0;
+$("newbtn").addEventListener("click",function(){
+  var b=this;
+  if(Date.now()-sure>5000){sure=Date.now();b.textContent="Tryk igen for at slette alt";setTimeout(function(){b.textContent="Start et nyt emne";},5000);return;}
+  try{localStorage.removeItem(KEY);}catch(e){}
+  S=fresh(); sure=0; b.textContent="Start et nyt emne";
+  FIELDS.forEach(function(id){$(id).value="";}); $("ok").checked=false; $("laterbox").hidden=true; $("linkbox").hidden=true;
+  profile($("conf1"),"a"); profile($("conf2"),"b"); show(); store();
+});
+$("ok").addEventListener("change",store);
+
+/* ---- tabs ---- */
+var TABS=["bog","hvi","lar"];
+TABS.forEach(function(t){$("tab-"+t).addEventListener("click",function(){
+  TABS.forEach(function(x){$("tab-"+x).setAttribute("aria-selected",String(x===t));$("view-"+x).hidden=x!==t;});
+});});
+
+/* ---- init ---- */
+FIELDS.forEach(function(id){if(typeof S.f[id]==="string") $(id).value=S.f[id];});
+$("ok").checked=!!S.ok;
+GOALS.forEach(function(g){$("goallist").appendChild(h("li",{text:g+"."}));});
+GOALS_FO.forEach(function(g){$("goalfo").appendChild(h("li",{text:"„"+g+"“"}));});
+$("rules").textContent=RULES;
+profile($("conf1"),"a"); profile($("conf2"),"b");
+if(!TEACHER&&S.step!=="start"&&!topic()) S.step="start";
+show();
+})();
+</script>
+</body>
+</html>
