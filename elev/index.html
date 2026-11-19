@@ -172,6 +172,7 @@ body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:no
       <div class="phead"><span class="num">2</span><h2>Gør</h2></div>
       <div id="expbox" class="stack tight"></div>
       <label class="check"><input type="checkbox" id="ok"><span>Min lærer har sagt ja til forsøget, og jeg har læst, hvad jeg skal passe på.</span></label>
+      <div class="field"><label class="label" for="pas">Det passer jeg på i forsøget, og hvorfor</label><input type="text" id="pas" autocomplete="off"></div>
       <div class="field"><label class="label" for="obs">Det så og målte jeg (skriv tallene med enheder)</label><textarea id="obs"></textarea></div>
       <p class="note">En sprogmodel kan ikke lave forsøget og kan ikke se, hvad der sker. Tallene skal være dine egne.</p>
     </section>
@@ -187,9 +188,10 @@ body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:no
     <section class="panel" id="sc-4" hidden>
       <div class="phead"><span class="num">4</span><h2>Forklar med 42 ord</h2></div>
       <p class="quote" data-q></p>
-      <p class="muted">Svar på spørgsmålet med højst 42 ord. Brug dine tal og de fagord, du har lært. Du kan ikke se sprogmodellens svar her, så det skal være dine egne ord.</p>
+      <p class="muted">Svar på spørgsmålet med 20 til 42 ord. Brug det, du selv fandt ud af. Sprogmodellens tekst er skjult, så det skal være dine egne ord.</p>
+      <div id="mine" class="sheet"></div>
       <div class="field"><label class="label" for="kort">Min forklaring</label><textarea id="kort"></textarea><p class="count" id="count"></p></div>
-      <div class="field"><label class="label" for="home" id="homelabel"></label><textarea id="home" class="short"></textarea></div>
+      <div class="field"><label class="label" for="home" id="homelabel"></label><textarea id="home" class="short" placeholder="Skriv en hel sætning"></textarea></div>
       <div class="field"><span class="label">Hvor sikker er du nu?</span><div id="conf2"></div></div>
     </section>
 
@@ -311,7 +313,7 @@ var TP={
  a2:{n:"Det periodiske system",q:"Hvordan er grundstofferne ordnet i det periodiske system?",
   need:"Et periodisk system og tre ting af metal, fx alufolie, et søm og en kobberledning.",
   exp:"Find grundstoffet i hver af de tre ting. Find det i det periodiske system, og skriv nummer, symbol og gruppe. Hvad har de tre til fælles?",
-  safe:"Se på tingene, men smag ikke på noget. Åbn aldrig et batteri.",home:"Hvilke grundstoffer står der på varedeklarationer hjemme hos dig?"},
+  safe:"Se på tingene, men smag ikke på noget. Åbn aldrig et batteri.",home:"Find et grundstof på en varedeklaration derhjemme. Hvad står det på, og hvad tror du, det gør der?"},
  r1:{n:"Syrer og baser",q:"Hvordan kan man se, om noget er surt eller basisk?",
   need:"Rødkål, varmt vand, fem glas, eddike, citronsaft, natron og håndsæbe.",
   exp:"Lad snittet rødkål trække i varmt vand, til vandet er farvet. Hæld lidt i fem glas. Tilsæt eddike, citronsaft, vand, natron opløst i vand og sæbevand, én ting i hvert glas. Skriv farven ned.",
@@ -328,12 +330,15 @@ var RULES=[
  "2. Se på elevens gæt og tal. Stil højst tre korte spørgsmål, der hjælper eleven med at se, hvad tallene viser, og om gættet holder.",
  "3. Nævn ét eller to fagord, eleven får brug for, og forklar hvert ord i én sætning.",
  "4. Find ikke på tal, og ret ikke elevens tal. Ser tallene mærkelige ud, så spørg, hvordan eleven målte.",
- "5. Skriv på dansk, højst 120 ord, uden markdown, i et sprog en 13-årig forstår.",
- "6. Giv ingen råd om sikkerhed. Henvis til læreren."].join("\n");
+ "5. Skriv på dansk, højst 120 ord, i et sprog en 13-årig forstår. Brug ikke fed skrift, overskrifter eller punktlister.",
+ "6. Giv ingen råd om sikkerhed. Henvis til læreren.",
+ "7. Skriv hele dit svar i én kodeblok, altså med tre backticks på linjen før og linjen efter, så eleven kan kopiere det med ét klik. Skriv intet uden for kodeblokken."].join("\n");
+/* a pasted answer may still carry the code fence */
+function clean(t){return String(t||"").replace(/^[ \t]*```[a-zA-Z]*[ \t]*$/gm,"").replace(/```/g,"").trim();}
 var CHATS=[["Åbn SkoleGPT","https://skolegpt.dk/"],["Åbn Copilot","https://m365.cloud.microsoft/chat"]];
 
 /* ---- state, kept in this browser only ---- */
-var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn"], ORDER=["start",1,2,3,4,"ark"];
+var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn","pas"], ORDER=["start",1,2,3,4,"ark"];
 function fresh(){return {step:"start",area:"",topic:"",f:{},conf:{a:0,b:0},ok:false,rounds:[{a:"",mine:""}]};}
 /* a link from a pupil (#a=...) carries the whole sheet; the teacher ticks the goals in the teacher's own browser */
 var TEACHER=null, TS={tm:["","","","","",""],note:"",by:""};
@@ -402,7 +407,7 @@ function prompt(i){
   var p=topic(), P=[RULES,"","EMNE: "+areaName()+(S.area==="x"?"":": "+p.n),"SPØRGSMÅLET, ELEVEN SKAL SVARE PÅ: "+p.q];
   if(p.exp) P.push("FORSØGET, ELEVEN LAVEDE: "+p.exp);
   P.push("ELEVENS GÆT FØR FORSØGET: "+val("hyp"),"DET SÅ OG MÅLTE ELEVEN: "+val("obs"));
-  if(i>0) P.push("","DINE SPØRGSMÅL SIDST:",S.rounds[0].a,"","ELEVENS SVAR:",S.rounds[0].mine,"",
+  if(i>0) P.push("","DINE SPØRGSMÅL SIDST:",clean(S.rounds[0].a),"","ELEVENS SVAR:",S.rounds[0].mine,"",
     "Sig kort, hvad der passer i elevens svar, og hvad eleven skal tænke mere over. Giv stadig ikke hele forklaringen. Stil højst to nye spørgsmål.");
   return P.join("\n");
 }
@@ -413,11 +418,13 @@ function drawRounds(){
     var cp=h("button",{type:"button",class:"btn",text:"Kopiér teksten",on:{click:function(){pt.value=prompt(i);copy(cp,"Kopiér teksten",pt.value);}}});
     var a=h("textarea",{class:"tall",id:"ra-"+i,placeholder:"Indsæt svaret fra chatten her"}); a.value=r.a;
     a.addEventListener("input",function(){r.a=a.value;});
+    a.addEventListener("change",function(){r.a=a.value=clean(a.value);store();});
     var m=h("textarea",{id:"rm-"+i}); m.value=r.mine; m.addEventListener("input",function(){r.mine=m.value;});
     host.appendChild(h("div",{class:"sheet relay"},[
       h("div",{class:"field"},[h("label",{class:"label",for:pt.id,text:i?"Ny tekst til chatten, med dine svar":"1. Kopiér teksten ind i den chat, I bruger i skolen"}),pt]),
       h("div",{class:"btnrow"},[cp].concat(CHATS.map(function(c){return h("a",{class:"btn plain",href:c[1],target:"_blank",rel:"noopener",text:c[0]});}))),
-      h("div",{class:"field"},[h("label",{class:"label",for:a.id,text:i?"Det skrev sprogmodellen":"2. Indsæt det, sprogmodellen skrev"}),a]),
+      h("div",{class:"field"},[h("label",{class:"label",for:a.id,text:i?"Det skrev sprogmodellen":"2. Indsæt det, sprogmodellen skrev"}),a,
+        h("p",{class:"muted",text:"Svaret kommer i en boks i chatten. Brug kopiér-knappen i boksens hjørne."})]),
       h("div",{class:"field"},[h("label",{class:"label",for:m.id,text:i?"Det tænker jeg nu":"3. Svar på dens spørgsmål med dine egne ord"}),m])]));
   });
   if(S.rounds.length<2) host.appendChild(h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn plain",text:"Spørg en gang til med mine svar",on:{click:function(){
@@ -429,7 +436,7 @@ function drawRounds(){
 /* ---- the 42 words ---- */
 function count(){
   var n=words($("kort").value), c=$("count");
-  c.textContent=n>42?n+" ord. Det er "+(n-42)+" for mange.":n+" af 42 ord";
+  c.textContent=n>42?n+" ord. Det er "+(n-42)+" for mange.":n<20?n+" af 42 ord. Brug mindst 20.":n+" af 42 ord";
   c.className="count"+(n>42?" over":"");
 }
 $("kort").addEventListener("input",count);
@@ -437,8 +444,8 @@ $("kort").addEventListener("input",count);
 /* ---- the sheet: one page. The pupil sends it as a link; the teacher ticks the six goals ---- */
 function snap(){
   var p=topic();
-  return {v:1,navn:val("navn"),emne:areaName()+(S.area==="x"?"":": "+p.n),q:p.q,hyp:val("hyp"),ca:S.conf.a,obs:val("obs"),
-    r:S.rounds.map(function(r){return [r.a.trim(),r.mine.trim()];}).filter(function(x){return x[0]||x[1];}),kort:val("kort"),cb:S.conf.b,home:val("home")};
+  return {v:1,navn:val("navn"),emne:areaName()+(S.area==="x"?"":": "+p.n),q:p.q,hyp:val("hyp"),ca:S.conf.a,obs:val("obs"),pas:val("pas"),
+    r:S.rounds.map(function(r){return [clean(r.a),r.mine.trim()];}).filter(function(x){return x[0]||x[1];}),kort:val("kort"),cb:S.conf.b,home:val("home")};
 }
 function drawSheet(){
   var host=$("sheet"); host.textContent="";
@@ -449,11 +456,14 @@ function drawSheet(){
     block("Emne",D.emne), block("Spørgsmålet",D.q),
     block("1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":""),D.hyp,"quote"),
     block("2. Det så og målte eleven",D.obs,"quote")]);
+  if(D.pas) sheet.appendChild(block("Det passede eleven på",D.pas,"quote"));
+  var w3=R.reduce(function(n,r){return n+words(String(r[1]||""));},0), w4=words(String(D.kort||""));
   R.forEach(function(r,i){
     sheet.appendChild(block("3. Sprogmodellen spurgte"+(i?" (anden gang)":""),r[0],"quote"));
     sheet.appendChild(block("Elevens svar",r[1],"quote"));
   });
-  sheet.appendChild(block("4. Elevens forklaring med "+words(String(D.kort||""))+" ord"+(D.cb?" (sikker: "+D.cb+" af 5)":""),D.kort,"quote"));
+  sheet.appendChild(h("p",{class:"muted",text:"Eleven skrev "+w3+" ord i sine svar til sprogmodellen og "+w4+" ord i forklaringen."}));
+  sheet.appendChild(block("4. Elevens forklaring med "+w4+" ord"+(D.cb?" (sikker: "+D.cb+" af 5)":""),D.kort,"quote"));
   sheet.appendChild(block("I hverdagen",D.home,"quote"));
   if(!TEACHER){
     sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Det ser din lærer efter"}),h("ol",{class:"plainlist"},GOALS.map(function(g){return h("li",{text:g+"."});}))]));
@@ -472,7 +482,9 @@ function drawSheet(){
   var cp=h("button",{type:"button",class:"btn plain",text:"Kopiér arket med mine kryds",on:{click:function(){
     var X=["FORSTÅET? – ARK FRA "+String(D.navn||"en elev").toUpperCase(),"Emne: "+D.emne,"Spørgsmålet: "+D.q,"",
       "1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":"")+": "+D.hyp,"2. Det så og målte eleven: "+D.obs];
+    if(D.pas) X.push("Det passede eleven på: "+D.pas);
     R.forEach(function(r){X.push("3. Sprogmodellen spurgte: "+r[0],"   Elevens svar: "+r[1]);});
+    X.push("Eleven skrev "+w3+" ord i sine svar til sprogmodellen og "+w4+" ord i forklaringen.");
     X.push("4. Elevens forklaring ("+words(String(D.kort||""))+" ord"+(D.cb?", sikker: "+D.cb+" af 5":"")+"): "+D.kort,"I hverdagen: "+D.home,"","Målene:");
     GOALS.forEach(function(g,i){var m=TM.filter(function(x){return x[0]===TS.tm[i];})[0]; X.push("["+(m?m[1]:" ")+"] "+g);});
     X.push("","Kommentar til eleven: "+TS.note,"Lærer: "+TS.by);
@@ -499,9 +511,9 @@ function err(msg){$("naverr").textContent=msg;$("naverr").hidden=!msg;}
 function check(step){
   if(step==="start") return topic()?"":(S.area==="x"?"Skriv det spørgsmål, du skal undersøge.":"Vælg et område og et emne først.");
   if(step===1) return val("hyp").length<10?"Skriv dit gæt først. Det er helt i orden at gætte.":"";
-  if(step===2) return !$("ok").checked?"Du skal have din lærers ja, før du laver forsøget.":val("obs").length<5?"Skriv, hvad du så og målte.":"";
+  if(step===2) return !$("ok").checked?"Du skal have din lærers ja, før du laver forsøget.":val("pas").length<5?"Skriv, hvad du passer på i forsøget.":val("obs").length<5?"Skriv, hvad du så og målte.":"";
   if(step===3) return S.rounds[0].a.trim().length<10?"Indsæt sprogmodellens svar først.":S.rounds[0].mine.trim().length<10?"Svar på sprogmodellens spørgsmål med dine egne ord.":"";
-  if(step===4){var n=words($("kort").value); return n<8?"Skriv din forklaring. Brug mindst otte ord.":n>42?"Du har brugt for mange ord. Skær ned til 42.":"";}
+  if(step===4){var n=words($("kort").value); return n<20?"Din forklaring er for kort. Brug mindst 20 ord, og tag dine egne resultater med.":n>42?"Du har brugt for mange ord. Skær ned til 42.":"";}
   return "";
 }
 function show(){
@@ -515,7 +527,11 @@ function show(){
   if(S.step==="start") drawPick();
   if(S.step===2){var e=$("expbox"); e.textContent=""; if(p){if(p.need) e.appendChild(block("Det skal du bruge",p.need)); if(p.exp) e.appendChild(block("Sådan gør du",p.exp)); e.appendChild(h("div",{class:"note"},[block("Pas på",p.safe)]));}}
   if(S.step===3) drawRounds();
-  if(S.step===4){$("homelabel").textContent=p?p.home:""; count();}
+  if(S.step===4){
+    $("homelabel").textContent=p?p.home:""; count();
+    var m=$("mine"); m.textContent=""; m.appendChild(block("Dine tal",val("obs")));
+    S.rounds.forEach(function(r){if(r.mine.trim()) m.appendChild(block("Det svarede du sprogmodellen",r.mine.trim()));});
+  }
   if(S.step==="ark") drawSheet();
   err("");
 }
