@@ -649,6 +649,10 @@ function laererView(){
       LR.ny?h("p",{class:"note",text:"Klassen er oprettet. Klassekoden er "+r.kode+", og lærerkoden er "+LR.n+". Skriv lærerkoden ned. Den vises ikke igen."}):null,
       h("p",{class:"muted",text:"Giv eleverne dette link: "+link}),
       h("div",{class:"btnrow"},[lb,h("button",{type:"button",class:"btn plain",text:"Opdater",on:{click:function(){load();}}}),all,del]),
+      h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Luk klassen",on:{click:function(){
+        try{sessionStorage.removeItem("forstaaet-laerer");}catch(e){}
+        LR.k="";LR.n="";login();scrollTo(0,0);
+      }}}),h("span",{class:"muted",text:"Arkene bliver liggende. Du åbner klassen igen med koderne."})]),
       rows.length?h("div",{class:"tablewrap"},[h("table",null,[
         h("thead",null,[h("tr",null,["Navn","Emne","Modtaget","Ord: trin 3 / forklaring","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
         h("tbody",null,rows.map(function(x){
