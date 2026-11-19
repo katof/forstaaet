@@ -109,6 +109,8 @@ details.src{border:2px solid var(--faint);padding:8px 12px}
 details.src summary{cursor:pointer;font-weight:600}
 details.src ol{margin-top:8px}
 body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:none!important}
+body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
+.ok{color:var(--moss);font-weight:600}
 @media print{
   body{background:#fff;color:#000;padding:0}
   body.printing .wrap>*:not(#view-bog), body.printing #view-bog>*:not(#sc-ark), body.printing #sc-ark>*:not(#sheet){display:none!important}
@@ -195,12 +197,25 @@ body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:no
       <div class="field"><span class="label">Hvor sikker er du nu?</span><div id="conf2"></div></div>
     </section>
 
+    <section class="panel" id="sc-laerer" hidden>
+      <h2>Lærerside</h2>
+      <div id="lr"></div>
+    </section>
+
     <!-- the teacher's sheet -->
     <section class="panel" id="sc-ark" hidden>
       <h2>Vis det til din lærer</h2>
       <p class="muted">Her er det, du har lavet. Skriv dit navn, og lav et link, som du sender til din lærer. Læreren åbner linket og ser dit ark.</p>
       <div class="field"><label class="label" for="navn">Dit navn og din klasse</label><input type="text" id="navn" autocomplete="off"></div>
-      <div class="btnrow"><button type="button" class="btn" id="linkbtn">Lav link til din lærer</button></div>
+      <div id="sendbox" class="stack tight" hidden>
+        <div class="btnrow">
+          <button type="button" class="btn" id="sendbtn">Send til min lærer</button>
+          <button type="button" class="btn plain" id="returbtn" hidden>Se, om min lærer har svaret</button>
+        </div>
+        <p class="ok" id="sendmsg" role="status" hidden></p>
+        <div id="retur"></div>
+      </div>
+      <div class="btnrow"><button type="button" class="btn plain" id="linkbtn">Lav et link til din lærer</button></div>
       <div id="linkbox" class="sheet relay" hidden>
         <p class="muted">Send linket til din lærer, fx i en besked. Arket ligger i selve linket og bliver ikke gemt andre steder.</p>
         <input type="text" id="link" readonly aria-label="Link til læreren">
@@ -336,10 +351,19 @@ var RULES=[
 /* a pasted answer may still carry the code fence */
 function clean(t){return String(t||"").replace(/^[ \t]*```[a-zA-Z]*[ \t]*$/gm,"").replace(/```/g,"").trim();}
 var CHATS=[["Åbn SkoleGPT","https://skolegpt.dk/"],["Åbn Copilot","https://m365.cloud.microsoft/chat"]];
+/* storage for class pages: a Google Sheet script. Empty API: no classes, the pupil sends a link instead */
+var API="https://script.google.com/macros/s/AKfycbydHaR4yCOYHz8Sb5fnwlKBm46e7DOT8D34ziF3q_M9rZdoNgWRx80xesZKbcWRxcPeiA/exec";
+var URLQ=new URLSearchParams(location.search), LAERER=!!API&&URLQ.has("laerer"), CUR="", LR={};
+function api(act,data){
+  var body={act:act},k; for(k in (data||{})) body[k]=data[k];
+  return fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
+    .then(function(r){return r.json();},function(){throw {code:"net"};})
+    .then(function(d){if(!d||!d.ok) throw {code:(d&&d.fejl)||"server"};return d;});
+}
 
 /* ---- state, kept in this browser only ---- */
 var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn","pas"], ORDER=["start",1,2,3,4,"ark"];
-function fresh(){return {step:"start",area:"",topic:"",f:{},conf:{a:0,b:0},ok:false,rounds:[{a:"",mine:""}]};}
+function fresh(){return {step:"start",area:"",topic:"",f:{},conf:{a:0,b:0},ok:false,rounds:[{a:"",mine:""}],klasse:"",arkid:""};}
 /* a link from a pupil (#a=...) carries the whole sheet; the teacher ticks the goals in the teacher's own browser */
 var TEACHER=null, TS={tm:["","","","","",""],note:"",by:""};
 function pack(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
@@ -351,7 +375,7 @@ if(!Array.isArray(S.rounds)||!S.rounds.length) S.rounds=[{a:"",mine:""}];
 if(!S.conf) S.conf={a:0,b:0};
 if(ORDER.indexOf(S.step)<0) S.step="start";
 function store(){
-  if(TEACHER) return;
+  if(TEACHER||LAERER) return;
   FIELDS.forEach(function(id){S.f[id]=$(id).value;}); S.ok=$("ok").checked;
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
 }
@@ -441,16 +465,29 @@ function count(){
 }
 $("kort").addEventListener("input",count);
 
-/* ---- the sheet: one page. The pupil sends it as a link; the teacher ticks the six goals ---- */
+/* ---- the sheet: one page. It goes to the teacher's class page, or as a link ---- */
 function snap(){
   var p=topic();
   return {v:1,navn:val("navn"),emne:areaName()+(S.area==="x"?"":": "+p.n),q:p.q,hyp:val("hyp"),ca:S.conf.a,obs:val("obs"),pas:val("pas"),
     r:S.rounds.map(function(r){return [clean(r.a),r.mine.trim()];}).filter(function(x){return x[0]||x[1];}),kort:val("kort"),cb:S.conf.b,home:val("home")};
 }
+function tmName(k){var m=TM.filter(function(x){return x[0]===k;})[0]; return m?m[1]:"";}
+function sheetText(D,ts){
+  var R=Array.isArray(D.r)?D.r:[], w3=R.reduce(function(n,r){return n+words(String(r[1]||""));},0), w4=words(String(D.kort||""));
+  var X=["FORSTÅET? – ARK FRA "+String(D.navn||"en elev").toUpperCase(),"Emne: "+D.emne,"Spørgsmålet: "+D.q,"",
+    "1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":"")+": "+D.hyp,"2. Det så og målte eleven: "+D.obs];
+  if(D.pas) X.push("Det passede eleven på: "+D.pas);
+  R.forEach(function(r){X.push("3. Sprogmodellen spurgte: "+r[0],"   Elevens svar: "+r[1]);});
+  X.push("Eleven skrev "+w3+" ord i sine svar til sprogmodellen og "+w4+" ord i forklaringen.",
+    "4. Elevens forklaring ("+w4+" ord"+(D.cb?", sikker: "+D.cb+" af 5":"")+"): "+D.kort,"I hverdagen: "+D.home,"","Målene:");
+  GOALS.forEach(function(g,i){X.push("["+(tmName(ts.tm[i])||" ")+"] "+g);});
+  X.push("","Kommentar til eleven: "+ts.note,"Lærer: "+ts.by);
+  return X.join("\n");
+}
 function drawSheet(){
   var host=$("sheet"); host.textContent="";
   if(TEACHER&&TEACHER.bad){host.appendChild(h("div",{class:"sheet"},[h("h3",{text:"Linket kan ikke læses"}),h("p",{class:"err",text:"Bed eleven om at kopiere hele linket og sende det igen."})]));return;}
-  if(!TEACHER&&!topic()) return;
+  if(!TEACHER&&(LAERER||!topic())) return;
   var D=TEACHER||snap(), R=Array.isArray(D.r)?D.r:[];
   var sheet=h("div",{class:"sheet"},[h("h3",{text:TEACHER?"Ark fra "+(D.navn||"en elev"):"Dit ark"}),
     block("Emne",D.emne), block("Spørgsmålet",D.q),
@@ -479,21 +516,98 @@ function drawSheet(){
   var by=h("input",{type:"text",id:"sh-by"}); by.value=TS.by; by.addEventListener("input",function(){TS.by=by.value;});
   sheet.appendChild(h("div",{class:"item"},[h("div",{class:"field"},[h("label",{class:"label",for:"sh-note",text:"Kommentar til eleven"}),note]),
     h("div",{class:"field"},[h("label",{class:"label",for:"sh-by",text:"Lærer"}),by])]));
-  var cp=h("button",{type:"button",class:"btn plain",text:"Kopiér arket med mine kryds",on:{click:function(){
-    var X=["FORSTÅET? – ARK FRA "+String(D.navn||"en elev").toUpperCase(),"Emne: "+D.emne,"Spørgsmålet: "+D.q,"",
-      "1. Elevens gæt"+(D.ca?" (sikker: "+D.ca+" af 5)":"")+": "+D.hyp,"2. Det så og målte eleven: "+D.obs];
-    if(D.pas) X.push("Det passede eleven på: "+D.pas);
-    R.forEach(function(r){X.push("3. Sprogmodellen spurgte: "+r[0],"   Elevens svar: "+r[1]);});
-    X.push("Eleven skrev "+w3+" ord i sine svar til sprogmodellen og "+w4+" ord i forklaringen.");
-    X.push("4. Elevens forklaring ("+words(String(D.kort||""))+" ord"+(D.cb?", sikker: "+D.cb+" af 5":"")+"): "+D.kort,"I hverdagen: "+D.home,"","Målene:");
-    GOALS.forEach(function(g,i){var m=TM.filter(function(x){return x[0]===TS.tm[i];})[0]; X.push("["+(m?m[1]:" ")+"] "+g);});
-    X.push("","Kommentar til eleven: "+TS.note,"Lærer: "+TS.by);
-    copy(cp,"Kopiér arket med mine kryds",X.join("\n"));
-  }}});
-  sheet.appendChild(h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Udskriv arket",on:{click:function(){
+  var cp=h("button",{type:"button",class:"btn plain",text:"Kopiér arket med mine kryds",on:{click:function(){copy(cp,"Kopiér arket med mine kryds",sheetText(D,TS));}}});
+  var pr=h("button",{type:"button",class:"btn plain",text:"Udskriv arket",on:{click:function(){
     document.body.classList.add("printing"); window.print(); setTimeout(function(){document.body.classList.remove("printing");},500);
-  }}}),cp]));
+  }}});
+  var msg=h("p",{class:"ok",role:"status",hidden:"hidden"});
+  var sv=CUR?h("button",{type:"button",class:"btn",text:"Gem mine kryds",on:{click:function(){
+    sv.disabled=true; msg.hidden=true;
+    api("kl_laerer",{k:LR.k,noegle:LR.n,del:"gem",id:CUR,tm:TS.tm.map(function(x){return x||"-";}).join(""),note:TS.note,by:TS.by})
+      .then(function(r){msg.className="ok";msg.textContent="Gemt. Eleven kan se dine kryds og din kommentar.";LR.draw(r);},
+            function(){msg.className="err";msg.textContent="Det kunne ikke gemmes. Prøv igen om lidt.";})
+      .then(function(){msg.hidden=false;sv.disabled=false;});
+  }}}):null;
+  sheet.appendChild(h("div",{class:"btnrow"},[sv,pr,cp])); sheet.appendChild(msg);
   host.appendChild(sheet);
+}
+
+/* ---- the pupil sends the sheet to the class, and can fetch the teacher's ticks ---- */
+function klok(){var d=new Date(),m=d.getMinutes();return d.getHours()+"."+(m<10?"0":"")+m;}
+function sendMsg(t,bad){var m=$("sendmsg");m.className=bad?"err":"ok";m.textContent=t;m.hidden=false;}
+$("sendbtn").addEventListener("click",function(){
+  var b=this;
+  if(val("navn").length<2){err("Skriv dit navn først, så din lærer kan se, hvem arket er fra.");return;}
+  err(""); b.disabled=true;
+  api("kl_send",{k:S.klasse,id:S.arkid||"",ark:JSON.stringify(snap())}).then(function(r){
+    S.arkid=r.id; store(); $("returbtn").hidden=false;
+    sendMsg("Sendt til "+r.navn+" kl. "+klok()+". Retter du noget, kan du sende igen.");
+  },function(e){sendMsg(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":e&&e.code==="fuld"?"Klassen er fuld. Sig det til din lærer.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
+  .then(function(){b.disabled=false;});
+});
+$("returbtn").addEventListener("click",function(){
+  var host=$("retur"); host.textContent="";
+  api("kl_retur",{k:S.klasse,id:S.arkid}).then(function(r){
+    if(!r.vurderet){host.appendChild(h("p",{class:"muted",text:"Din lærer har ikke svaret endnu."}));return;}
+    host.appendChild(h("div",{class:"sheet"},[h("h3",{text:"Svar fra "+(r.by||"din lærer")}),
+      h("ul",{class:"plainlist"},GOALS.map(function(g,i){return h("li",{text:(tmName(String(r.tm).charAt(i))||"Ikke vurderet")+": "+g});})),
+      r.note?block("Kommentar",r.note,"quote"):null]));
+  },function(){host.appendChild(h("p",{class:"err",text:"Svaret kunne ikke hentes. Prøv igen om lidt."}));});
+});
+
+/* ---- the teacher's page: ?laerer ---- */
+function laererView(){
+  var host=$("lr"), mem={};
+  try{mem=JSON.parse(sessionStorage.getItem("forstaaet-laerer")||"{}");}catch(e){}
+  LR.k=mem.k||""; LR.n=mem.n||"";
+  function field(id,label,type){var i=h("input",{type:type||"text",id:id,autocomplete:"off"});return [h("div",{class:"field"},[h("label",{class:"label",for:id,text:label}),i]),i];}
+  function login(msg){
+    host.textContent=""; TEACHER=null; CUR=""; drawSheet();
+    var k=field("l-k","Klassekode"), n=field("l-n","Lærerkode","password"), ny=field("l-ny","Klassens navn, fx 7.B fysik og kemi");
+    k[1].value=LR.k;
+    host.appendChild(h("div",{class:"stack tight"},[
+      h("p",{class:"muted",text:"Her kommer elevernes ark ind af sig selv, når de trykker »Send til min lærer«."}),
+      msg?h("p",{class:"err",role:"alert",text:msg}):null,
+      h("h3",{text:"Åbn en klasse"}),k[0],n[0],
+      h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Åbn",on:{click:function(){LR.k=k[1].value.trim().toUpperCase();LR.n=n[1].value.trim();if(LR.k&&LR.n) load();}}})]),
+      h("h3",{text:"Opret en ny klasse"}),ny[0],
+      h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn plain",text:"Opret klasse",on:{click:function(){
+        if(ny[1].value.trim().length<2) return;
+        api("kl_ny",{navn:ny[1].value.trim()}).then(function(r){LR.k=r.kode;LR.n=r.noegle;LR.ny=true;load();},function(){login("Klassen kunne ikke oprettes. Prøv igen om lidt.");});
+      }}})])]));
+  }
+  function load(){
+    return api("kl_laerer",{k:LR.k,noegle:LR.n,del:"liste"}).then(function(r){
+      try{sessionStorage.setItem("forstaaet-laerer",JSON.stringify({k:LR.k,n:LR.n}));}catch(e){}
+      LR.draw(r);
+    },function(e){login(e&&e.code==="adgang"?"Koderne passer ikke.":"Klassen kunne ikke hentes. Prøv igen om lidt.");});
+  }
+  LR.draw=function(r){
+    host.textContent="";
+    var link=location.origin+location.pathname+"?k="+r.kode, rows=r.ark, sure=0;
+    function parse(x){try{return JSON.parse(x[13]);}catch(e){return {bad:true};}}
+    function ts(x){return {tm:[0,1,2,3,4,5].map(function(i){var c=String(x[9]).charAt(i);return c==="y"||c==="p"||c==="n"?c:"";}),note:x[10],by:x[11]};}
+    var lb=h("button",{type:"button",class:"btn plain",text:"Kopiér elevernes link",on:{click:function(){copy(lb,"Kopiér elevernes link",link);}}});
+    var all=h("button",{type:"button",class:"btn plain",text:"Kopiér alle ark som tekst",on:{click:function(){
+      copy(all,"Kopiér alle ark som tekst",rows.map(function(x){return sheetText(parse(x),ts(x));}).join("\n\n––––––––––––––––––––\n\n"));
+    }}});
+    var del=h("button",{type:"button",class:"btn plain",text:"Slet klassen og alle ark",on:{click:function(){
+      if(Date.now()-sure>5000){sure=Date.now();del.textContent="Tryk igen for at slette alt";setTimeout(function(){del.textContent="Slet klassen og alle ark";},5000);return;}
+      api("kl_laerer",{k:LR.k,noegle:LR.n,del:"slet"}).then(function(){try{sessionStorage.removeItem("forstaaet-laerer");}catch(e){} LR.k="";LR.n="";login();},function(){});
+    }}});
+    host.appendChild(h("div",{class:"stack tight"},[h("h3",{text:r.navn}),
+      LR.ny?h("p",{class:"note",text:"Klassen er oprettet. Klassekoden er "+r.kode+", og lærerkoden er "+LR.n+". Skriv lærerkoden ned. Den vises ikke igen."}):null,
+      h("p",{class:"muted",text:"Giv eleverne dette link: "+link}),
+      h("div",{class:"btnrow"},[lb,h("button",{type:"button",class:"btn plain",text:"Opdater",on:{click:function(){load();}}}),all,del]),
+      rows.length?h("div",{class:"tablewrap"},[h("table",null,[
+        h("thead",null,[h("tr",null,["Navn","Emne","Modtaget","Ord: trin 3 / forklaring","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
+        h("tbody",null,rows.map(function(x){
+          return h("tr",null,[h("td",{text:x[2]}),h("td",{text:x[3]}),h("td",{text:String(x[4]).slice(5,16)}),h("td",{text:x[7]+" / "+x[8]}),h("td",{text:x[12]?"Ja":"Nej"}),
+            h("td",null,[h("button",{type:"button",class:"btn plain",text:CUR===x[0]?"Åbent":"Åbn",on:{click:function(){TEACHER=parse(x);TS=ts(x);CUR=x[0];LR.draw(r);drawSheet();$("sheet").scrollIntoView();}}})])]);
+        }))])]):h("p",{class:"muted",text:"Der er ikke kommet nogen ark endnu."})]));
+    LR.ny=false;
+  };
+  if(LR.k&&LR.n) load(); else login();
 }
 $("navn").addEventListener("input",function(){$("linkbox").hidden=true;drawSheet();});
 $("linkbtn").addEventListener("click",function(){
@@ -517,7 +631,7 @@ function check(step){
   return "";
 }
 function show(){
-  if(TEACHER){ORDER.forEach(function(x){$("sc-"+x).hidden=x!=="ark";});document.body.classList.add("laerer");drawSheet();return;}
+  if(TEACHER||LAERER){ORDER.forEach(function(x){$("sc-"+x).hidden=x!=="ark";});$("sc-laerer").hidden=!LAERER;document.body.classList.add("laerer");drawSheet();return;}
   var p=topic(), i=ORDER.indexOf(S.step);
   ORDER.forEach(function(s){$("sc-"+s).hidden=s!==S.step;});
   Array.prototype.forEach.call($("steps").children,function(li,n){li.className=S.step==="ark"||n+1<S.step?"done":n+1===S.step?"on":"";if(n+1===S.step) li.setAttribute("aria-current","step"); else li.removeAttribute("aria-current");});
@@ -532,7 +646,7 @@ function show(){
     var m=$("mine"); m.textContent=""; m.appendChild(block("Dine tal",val("obs")));
     S.rounds.forEach(function(r){if(r.mine.trim()) m.appendChild(block("Det svarede du sprogmodellen",r.mine.trim()));});
   }
-  if(S.step==="ark") drawSheet();
+  if(S.step==="ark"){drawSheet(); $("sendbox").hidden=!(API&&S.klasse); $("returbtn").hidden=!S.arkid;}
   err("");
 }
 $("next").addEventListener("click",function(){
@@ -545,7 +659,7 @@ $("newbtn").addEventListener("click",function(){
   var b=this;
   if(Date.now()-sure>5000){sure=Date.now();b.textContent="Tryk igen for at slette alt";setTimeout(function(){b.textContent="Start et nyt emne";},5000);return;}
   try{localStorage.removeItem(KEY);}catch(e){}
-  S=fresh(); sure=0; b.textContent="Start et nyt emne";
+  var kl=S.klasse; S=fresh(); S.klasse=kl; sure=0; b.textContent="Start et nyt emne"; $("sendmsg").hidden=true; $("retur").textContent="";
   FIELDS.forEach(function(id){$(id).value="";}); $("ok").checked=false; $("laterbox").hidden=true; $("linkbox").hidden=true;
   profile($("conf1"),"a"); profile($("conf2"),"b"); show(); store();
 });
@@ -564,8 +678,10 @@ GOALS.forEach(function(g){$("goallist").appendChild(h("li",{text:g+"."}));});
 GOALS_FO.forEach(function(g){$("goalfo").appendChild(h("li",{text:"„"+g+"“"}));});
 $("rules").textContent=RULES;
 profile($("conf1"),"a"); profile($("conf2"),"b");
+if(URLQ.get("k")){S.klasse=URLQ.get("k").toUpperCase().replace(/[^A-Z0-9]/g,"");}
 if(!TEACHER&&S.step!=="start"&&!topic()) S.step="start";
 show();
+if(LAERER) laererView();
 })();
 </script>
 </body>
