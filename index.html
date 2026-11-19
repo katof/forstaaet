@@ -66,7 +66,7 @@ header.top .dp{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px;align-
 .phead{display:flex;gap:12px;align-items:baseline}
 .num{flex:none;border:2px solid var(--ink);padding:1px 7px;background:var(--ink);color:var(--surface)}
 .field{display:flex;flex-direction:column;min-width:0}
-textarea,input[type=text]{font:inherit;width:100%;padding:10px 12px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);border-radius:0;resize:vertical}
+textarea,select,input[type=text],input[type=password]{font:inherit;width:100%;padding:10px 12px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);border-radius:0;resize:vertical}
 textarea{min-height:5.4em}
 textarea.tall{min-height:9em}
 textarea.short{min-height:3.6em}
@@ -121,6 +121,12 @@ th{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:
 .relay textarea{background:var(--surface)}
 .step{font-weight:600}
 a.btn{text-decoration:none;display:inline-block}
+.code{font-family:var(--mono);font-weight:600;font-size:1.05rem;letter-spacing:.08em;background:var(--sun);color:var(--on-sun);border:2px solid var(--ink);padding:1px 8px;white-space:nowrap}
+.savestate{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.check input{width:22px;height:22px;flex:none;margin:2px 0 0;accent-color:var(--sea)}
+#runbar{display:flex;flex-direction:column;gap:8px}
+td .btn.plain{font-size:.85rem;padding:4px 8px;white-space:nowrap}
 pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:.84rem;line-height:1.5}
 </style>
 
@@ -140,16 +146,51 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
     <div class="dp"><span class="stamp">GÅ IKKE I PANIK</span><span class="q">Svaret er 42. Men hvad var spørgsmålet?</span></div>
   </header>
 
+  <div class="note" id="runbar" hidden></div>
+
+  <section class="panel" id="start" hidden>
+    <h2 id="start-title">Start et forløb</h2>
+    <p class="muted">Siden gemmer dit forløb. Så kan du holde pause og fortsætte senere, og en fagperson kan se dit tjekark.</p>
+    <h3>Det bliver gemt</h3>
+    <ul class="plainlist muted">
+      <li>Det, du skriver: dine forklaringer, dine spørgsmål og svarene fra sprogmodellen.</li>
+      <li>Hvornår du bruger de enkelte trin og knapper.</li>
+      <li>Ikke dit navn. Du får en kode i stedet. Skriv ikke navne eller andet personligt i felterne.</li>
+    </ul>
+    <p class="muted">Det gemmes i et regneark hos den, der står for forsøget. Bruger siden en sprogmodel for dig, bliver dine spørgsmål sendt til den. Du kan stoppe når som helst.</p>
+    <label class="check"><input type="checkbox" id="samtykke"><span>Jeg har læst det og vil gerne være med.</span></label>
+    <p class="err" id="starterr" role="alert" hidden></p>
+    <div class="btnrow"><button type="button" class="btn" id="startbtn">Start</button></div>
+    <h3>Har du en kode?</h3>
+    <div class="field"><label class="label" for="kode">Din kode</label><input type="text" id="kode" placeholder="Fx ABCD-EFGH" autocomplete="off"></div>
+    <div class="btnrow">
+      <button type="button" class="btn plain" id="kodebtn">Fortsæt mit forløb</button>
+      <button type="button" class="btn plain" id="lokalbtn">Brug siden uden at gemme</button>
+    </div>
+  </section>
+
+  <div class="stack" id="view-fag" hidden></div>
+  <div class="stack" id="view-forsker" hidden></div>
+
   <div class="tabs" role="tablist" aria-label="Visninger">
     <button type="button" role="tab" id="tab-laer" aria-controls="view-laer" aria-selected="true">Lær noget nyt</button>
     <button type="button" role="tab" id="tab-tjek" aria-controls="view-tjek" aria-selected="false">Tjek en forklaring</button>
     <button type="button" role="tab" id="tab-regler" aria-controls="view-regler" aria-selected="false">Sådan virker den</button>
   </div>
-  <p class="note" id="aistate">Siden undersøger, om den kan spørge Claude …</p>
+  <p class="note" id="aistate"></p>
   <div class="btnrow" id="moderow" hidden><button type="button" class="btn plain" id="modebtn">Brug min egen chat i stedet</button></div>
 
   <!-- VIEW: LÆR -->
   <div class="stack" id="view-laer" role="tabpanel" aria-labelledby="tab-laer">
+    <section class="panel" id="back" hidden>
+      <h2>Velkommen tilbage</h2>
+      <p class="muted">Vil du prøve at forklare det igen, før du ser det, du skrev sidst? Så kan du se, hvad der sidder fast.</p>
+      <div class="btnrow">
+        <button type="button" class="btn" id="backlater">Forklar igen først</button>
+        <button type="button" class="btn plain" id="backgo">Fortsæt, hvor jeg slap</button>
+      </div>
+    </section>
+
     <section class="panel" id="s1">
       <div class="phead"><span class="num">1</span><h2>Materialet</h2></div>
       <div class="field" id="imgfield" hidden>
@@ -233,12 +274,22 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
       <p class="muted">Sprogmodellen sammenligner din forklaring med alt det, den selv har sagt, også huskereglerne. Den viser forskellene og foreslår spørgsmål. Den kan ikke afgøre, hvem der har ret. Det kan kun et menneske, der kan faget.</p>
       <p class="err" id="sheeterr" role="alert" hidden></p>
       <div class="btnrow"><button type="button" class="btn" id="makesheet" disabled>Lav tjekark</button></div>
+      <div id="fagbox" class="sheet relay" hidden>
+        <h3>Send tjekarket til en fagperson</h3>
+        <p class="muted">Fagpersonen åbner linket, ser materialet og din forklaring og gemmer sin vurdering. Dit navn står ingen steder.</p>
+        <input type="text" id="faglink" readonly aria-label="Link til fagpersonen">
+        <div class="btnrow">
+          <button type="button" class="btn" id="fagcopy">Kopiér linket</button>
+          <button type="button" class="btn plain" id="fagsvar">Se, om fagpersonen har svaret</button>
+        </div>
+        <p class="muted" id="fagmsg" role="status" hidden></p>
+      </div>
       <div id="sheet-a"></div>
     </section>
 
     <section class="panel" id="s7">
       <div class="phead"><span class="num">7</span><h2>Pause og senere</h2></div>
-      <p class="muted">Siden gemmer ikke noget. Vil du holde pause, så kopiér hele forløbet: materialet, samtalen, dine forklaringer, huskereglerne og dine udpakninger.</p>
+      <p class="muted" id="pausetext">Siden gemmer ikke noget. Vil du holde pause, så kopiér hele forløbet: materialet, samtalen, dine forklaringer, huskereglerne og dine udpakninger.</p>
       <div class="btnrow"><button type="button" class="btn plain" id="export">Kopiér hele forløbet</button></div>
       <p class="ok" id="exportmsg" hidden>Indsæt teksten i dine noter, så du kan fortsætte senere.</p>
       <textarea id="exportout" class="tall" hidden readonly aria-label="Hele forløbet som tekst"></textarea>
@@ -342,7 +393,7 @@ var EXAMPLE={
 var EX_OWN="Jeg har forstået at bredden på digen viser hvor lang tid lavaen flød. De N´er på billedet er normal-kompas (verdenskompas) og R er reversed (fordi polerne skifter)";
 var EX_CHAT="Klippen omkring gangen var gammel og havde “normal” magnetisme. Da magmaen senere pressede sig op gennem revnen, var magnetfeltet vendt til “reversed”. Den varme magma opvarmede klippen ved siden af. Hvis klippen blev varm nok, blev dens kompas nulstillet, og når den kølede af igen, låste den sig i den nye, omvendte retning.\n\nPointen er, at bredden af den opvarmede zone fungerer som et stopur. Hvis magmaen kun strømmede kort tid, når varmen ikke ret langt ud. Hvis den strømmede længe, varmes klippen op langt ud til siderne. Ved at måle bredden kan man beregne, hvor længe gangen var aktiv.";
 
-var sample=null, ai="wait", canImg=false, imgFile=null, manual=false;
+var ai="off", canImg=false, imgFile=null, manual=false, fixed=false, laterOnly=false;
 var CHATS=[["Åbn SkoleGPT","https://skolegpt.dk/"],["Åbn Copilot","https://m365.cloud.microsoft/chat"]];
 var WAIT="Venter på svaret fra din chat …";
 var turns=[], conf={a:0,b:0,c:0}, ctl=null, busy=false;
@@ -371,12 +422,13 @@ function copyBtn(btn,label,txt){
 function errCopy(code){
   if(code==="cancelled") return "";
   if(code==="rate_limited") return "Der er spurgt for meget lige nu. Prøv igen om lidt.";
-  if(code==="session_expired") return "Du skal logge ind igen.";
-  if(code==="refused") return "Claude ville ikke svare på det. Prøv at spørge på en anden måde.";
+  if(code==="refused") return "Sprogmodellen svarede ikke på det. Prøv at spørge på en anden måde.";
+  if(code==="net") return "Der er ingen forbindelse lige nu. Prøv igen om lidt.";
+  if(code==="model_fejl") return "Sprogmodellen svarer ikke lige nu. Prøv igen om lidt.";
   if(code==="invalid_json") return "Svaret kunne ikke læses. Prøv igen.";
   if(code==="image_rejected") return "Billedet kunne ikke bruges. Prøv et andet.";
   if(code==="prompt_too_large") return "Teksten er for lang. Brug et kortere uddrag.";
-  if(code==="not_granted"||code==="sampling_disabled"||code==="not_declared"||code==="capability_disabled"||code==="capability_removed"){ai="off";paintAi();return "Claude er ikke slået til for denne side. Du kan bruge din egen chat i stedet.";}
+  if(code==="ingen_model"){ai="off";paintAi();return "Sprogmodellen er ikke sat op. Du kan bruge din egen chat i stedet.";}
   return "Noget gik galt. Prøv igen.";
 }
 function showErr(id,msg){var e=$(id);e.textContent=msg;e.hidden=!msg;}
@@ -385,24 +437,349 @@ function showErr(id,msg){var e=$(id);e.textContent=msg;e.hidden=!msg;}
 function man(){return ai==="off"||(ai==="on"&&manual);}
 function hasImg(){return !!imgFile&&(man()||canImg);}
 function paintAi(){
-  var on=ai!=="wait"&&!busy;
+  var on=!busy;
   ["send","notasked","mnemo","makesheet","b-go"].forEach(function(id){$(id).disabled=!on;});
   if(on&&!turns.length){$("notasked").disabled=true;$("mnemo").disabled=true;}
-  $("aistate").textContent=ai==="wait"?"Siden undersøger, om den kan spørge Claude …"
-    :!man()?"Siden kan spørge Claude. Første gang bliver du bedt om lov, og svarene bruger af dit eget forbrug."
+  $("aistate").textContent=!man()?"Siden spørger en sprogmodel for dig. Spørgsmål og svar bliver gemt sammen med dit forløb."
     :"Siden bruger din egen chat, fx SkoleGPT eller Copilot. Siden laver teksten. Du kopierer den ind i chatten og indsætter svaret her.";
-  $("moderow").hidden=ai!=="on"; $("modebtn").disabled=busy;
-  $("modebtn").textContent=manual?"Brug Claude her på siden":"Brug min egen chat i stedet";
-  $("imgfield").hidden=!(man()||(ai==="on"&&canImg)); $("imgnote").hidden=!man();
+  $("moderow").hidden=ai!=="on"||!!(run&&run.forsog); $("modebtn").disabled=busy;
+  $("modebtn").textContent=manual?"Lad siden spørge sprogmodellen":"Brug min egen chat i stedet";
+  $("imgfield").hidden=fixed||!(man()||(ai==="on"&&canImg)); $("imgnote").hidden=!man();
 }
 function setBusy(b){busy=b;$("stop").hidden=!b||man();paintAi();}
-$("modebtn").addEventListener("click",function(){manual=!manual;paintAi();});
-if(window.claude&&typeof window.claude.use==="function"){
-  window.claude.use("sample").then(function(s){
-    sample=s; ai=s?"on":"off"; paintAi();
-    if(s&&s.limits) s.limits().then(function(l){canImg=!!(l&&l.images);paintAi();},function(){});
-  },function(){ai="off";paintAi();});
-}else{ai="off";}
+$("modebtn").addEventListener("click",function(){manual=!manual;log("skiftede chat",manual?"egen chat":"siden");paintAi();});
+
+/* ---- storage and model behind a Google Sheet. Empty API: nothing is saved, own chat only ---- */
+var API="https://script.google.com/macros/s/AKfycbydHaR4yCOYHz8Sb5fnwlKBm46e7DOT8D34ziF3q_M9rZdoNgWRx80xesZKbcWRxcPeiA/exec";
+var Q=new URLSearchParams(location.search);
+var run=null, events=[], saveTimer=null, lastSaved="", restoring=false, ark=null, cmpShown=false, laterAt="", imgData=null, lastField="";
+var FIELDS=["mat","who","own1","words","q","own2","cmp1","cmp2","cmp3","later","laterold"];
+function fri(){return !!run&&run.betingelse==="fri";}
+function api(act,data,signal){
+  var body={act:act},k; for(k in (data||{})) body[k]=data[k];
+  return fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body),signal:signal||undefined})
+    .then(function(r){return r.json();},function(e){throw {code:e&&e.name==="AbortError"?"cancelled":"net"};})
+    .then(function(d){if(!d||!d.ok) throw {code:(d&&d.fejl)||"server"};return d;});
+}
+function log(name,detail){
+  if(!run||restoring) return;
+  events.push({t:Date.now(),h:name,d:detail===undefined?"":String(detail)}); queueSave();
+}
+function klok(){var d=new Date(),m=d.getMinutes();return d.getHours()+"."+(m<10?"0":"")+m;}
+function imageData(){
+  if(!imgFile) return Promise.resolve("");
+  if(imgData) return imgData;
+  imgData=new Promise(function(res){
+    var im=new Image(), u=URL.createObjectURL(imgFile);
+    im.onload=function(){
+      var k=Math.min(1,1400/Math.max(im.width,im.height)), c=document.createElement("canvas");
+      c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
+      c.getContext("2d").drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u);
+      try{res(c.toDataURL("image/jpeg",.82));}catch(e){res("");}
+    };
+    im.onerror=function(){res("");};
+    im.src=u;
+  });
+  return imgData;
+}
+/* the model sits behind the sheet's script, so every participant gets the same one */
+function sample(messages,o){
+  o=o||{};
+  return (o.images?imageData():Promise.resolve("")).then(function(img){
+    return api("spoerg",{kode:run.kode,messages:messages,billede:img},o.signal);
+  }).then(function(d){return {text:str(d.tekst)};});
+}
+sample.json=function(p,o,soft){
+  return sample([{role:"user",content:p}],o).then(function(r){
+    try{return looseJson(r.text);}catch(e){if(soft) return {raw:r.text}; throw {code:"invalid_json"};}
+  });
+};
+
+function stage(){
+  if(val("later")) return "7 forklaring senere";
+  if(ark) return "6 tjekark";
+  if(cmpShown) return "5 før og efter";
+  if(val("own2")) return "4 forklaring efter";
+  if(turns.length) return "3 samtale";
+  if(val("own1")) return "2 forklaring før";
+  if(val("mat")||imgFile) return "1 materiale";
+  return "0 startet";
+}
+function flat(){
+  return {"Nået til":stage(),"Materiale":val("mat")||(imgFile?"(et billede)":""),"Forkundskab":val("who"),
+    "Forklaring før":val("own1"),"Sikker før":conf.a||"","Ord jeg ikke forstår":val("words"),
+    "Antal spørgsmål":turns.filter(function(t){return t.role==="user";}).length,"Huskeregler":mnemos.length,
+    "Så samtalen igen":peeked?"ja":"nej","Forklaring efter":val("own2"),"Sikker efter":conf.b||"",
+    "Kan forklare nu":val("cmp1"),"Har ændret sig":val("cmp2"),"Stadig uklart":val("cmp3"),
+    "Forklaring senere":val("later"),"Sikker senere":conf.c||"","Senere skrevet":laterAt};
+}
+function snapshot(){
+  var f={}; FIELDS.forEach(function(id){f[id]=$(id).value;});
+  return {v:1,f:f,conf:{a:conf.a,b:conf.b,c:conf.c},turns:turns,skipped:skipped,
+    mnemos:mnemos.map(function(m){return {billede:m.billede,dele:m.dele,passer_ikke:m.passer_ikke,key:m.key||"",keyShown:m.keyShown,udp:m.ta.value};}),
+    peeked:peeked,convHidden:convHidden,cmpShown:cmpShown,laterAt:laterAt,ark:ark};
+}
+function queueSave(){if(!run||restoring) return; clearTimeout(saveTimer); saveTimer=setTimeout(save,2500);}
+function save(){
+  clearTimeout(saveTimer);
+  if(!run) return;
+  var s=JSON.stringify(snapshot());
+  if(s===lastSaved&&!events.length) return;
+  var ev=events.splice(0); lastSaved=s;
+  api("gem",{kode:run.kode,tilstand:s,flad:flat(),haendelser:ev}).then(function(){paintRun("Gemt kl. "+klok());},
+    function(){events=ev.concat(events);lastSaved="";paintRun("Kunne ikke gemme lige nu. Siden prøver igen.");saveTimer=setTimeout(save,15000);});
+}
+document.addEventListener("input",queueSave);
+document.addEventListener("click",queueSave);
+document.addEventListener("visibilitychange",function(){if(document.hidden) save();});
+document.addEventListener("focusin",function(e){
+  var id=e.target&&e.target.id;
+  if(id&&id!==lastField&&FIELDS.indexOf(id)>-1){lastField=id;log("felt",id);}
+});
+
+function runLink(){return location.origin+location.pathname+"?k="+run.kode;}
+function paintRun(msg){
+  var b=$("runbar");
+  if(!run){b.hidden=true;return;}
+  if(!b.firstChild){
+    var cp=h("button",{type:"button",class:"btn plain",text:"Kopiér mit link",on:{click:function(){copyBtn(cp,"Kopiér mit link",runLink());}}});
+    b.appendChild(h("p",null,["Din kode er ",h("span",{class:"code",text:run.kode}),". Med koden eller linket kan du fortsætte senere, også på en anden computer."]));
+    b.appendChild(h("div",{class:"btnrow"},[cp,h("span",{class:"savestate",id:"savestate",role:"status"})]));
+  }
+  b.hidden=false;
+  if(msg) $("savestate").textContent=msg;
+}
+/* which panels show: the free-chat condition has no "before" and no before/after */
+function layout(){
+  $("s2").hidden=fri()||laterOnly; $("s3").hidden=laterOnly; $("s4").hidden=laterOnly;
+  $("s5").hidden=fri()||laterOnly; $("s6").hidden=laterOnly;
+  var n=0;
+  Array.prototype.forEach.call(document.querySelectorAll("#view-laer .panel"),function(p){
+    var x=p.querySelector(".phead .num"); if(x&&!p.hidden) x.textContent=String(++n);
+  });
+}
+function show(mode){
+  var app=mode==="laer";
+  document.querySelector(".tabs").hidden=!app||fri(); $("aistate").hidden=!app;
+  TABS.forEach(function(x){$("view-"+x).hidden=!(app&&$("tab-"+x).getAttribute("aria-selected")==="true");});
+  $("start").hidden=mode!=="start";
+  if(!app){$("moderow").hidden=true;$("runbar").hidden=true;}
+}
+function applyRun(r){
+  run={kode:r.kode,betingelse:r.betingelse,forsog:r.forsog||null};
+  ai=r.model?"on":"off"; canImg=!!r.billeder; manual=false;
+  var f=run.forsog;
+  if(f&&(f.materiale||f.billede)){
+    fixed=true; $("mat").value=f.materiale; $("mat").readOnly=true;
+    if(f.billede){
+      $("thumb").src=f.billede; $("thumb").hidden=false;
+      fetch(f.billede).then(function(x){return x.blob();}).then(function(b){imgFile=b;imgData=null;},function(){});
+    }
+  }
+  if(fri()){
+    $("notasked").hidden=true; $("mnemo").hidden=true;
+    $("s4").querySelector("h2").textContent="Forklar selv uden at kigge";
+    document.querySelector('label[for="own2"]').textContent="Min forklaring";
+  }
+  $("pausetext").textContent="Dit forløb bliver gemt, mens du skriver. Kom tilbage med din kode eller dit link. Du kan også kopiere hele forløbet til dine egne noter.";
+  try{history.replaceState(null,"","?k="+run.kode);}catch(e){}
+  show("laer"); layout(); paintRun(); paintAi();
+}
+function restore(s){
+  restoring=true; s=s||{};
+  var f=s.f||{};
+  FIELDS.forEach(function(id){if(typeof f[id]==="string"&&!(fixed&&id==="mat")) $(id).value=f[id];});
+  ["a","b","c"].forEach(function(k){conf[k]=(s.conf&&+s.conf[k])||0;});
+  profile($("conf1"),"a"); profile($("conf2"),"b"); profile($("conf3"),"c");
+  turns=arr(s.turns).filter(function(t){return t&&str(t.content);}).map(function(t){return {role:t.role==="user"?"user":"assistant",content:t.content};});
+  if(turns.length&&turns[turns.length-1].role==="user"){var last=turns.pop(); if(!val("q")) $("q").value=last.content;}
+  $("chat").textContent=""; turns.forEach(function(t){bubble(t.role,t.content);});
+  $("extras").textContent=""; mnemos=[];
+  skipped=arr(s.skipped).filter(function(x){return x&&str(x.element);}).map(function(x){return {element:x.element,hvorfor:str(x.hvorfor)};});
+  if(skipped.length) skippedBox(extraBox("Det spurgte du ikke om",true),skipped);
+  arr(s.mnemos).forEach(function(x){
+    if(!x||!str(x.billede)) return;
+    mnemoView(extraBox("Huskeregel",true),{billede:x.billede,dele:arr(x.dele),passer_ikke:str(x.passer_ikke),key:str(x.key),keyShown:!!x.keyShown},str(x.udp));
+  });
+  peeked=!!s.peeked; laterAt=str(s.laterAt);
+  if(s.cmpShown&&val("own2").length>=10) showCmp();
+  if(s.ark&&s.ark.d){ark=s.ark; renderSheet($("sheet-a"),ark.d,ark.src); fagLink();}
+  if(turns.length&&(s.convHidden||val("own2"))) hideConv(true);
+  lastSaved=JSON.stringify(snapshot()); restoring=false; paintAi();
+}
+function resume(k){
+  showErr("starterr","");
+  return api("hent",{kode:k}).then(function(r){
+    var s={}; try{s=JSON.parse(r.tilstand||"{}");}catch(e){}
+    applyRun(r); restore(s); log("genoptaget");
+    if(val("own2")&&!val("later")) $("back").hidden=false;
+  },function(e){
+    show("start");
+    showErr("starterr",e&&e.code==="ukendt"?"Koden findes ikke. Tjek, at den er skrevet rigtigt.":"Forløbet kunne ikke hentes. Prøv igen om lidt.");
+  });
+}
+$("startbtn").addEventListener("click",function(){
+  var b=this;
+  if(!$("samtykke").checked){showErr("starterr","Sæt kryds først, hvis du vil være med.");return;}
+  showErr("starterr",""); b.disabled=true;
+  api("ny",{f:Q.get("f")||""}).then(function(r){applyRun(r);log("startet",r.betingelse);},
+    function(e){showErr("starterr",e&&e.code==="ukendt"?"Forsøget findes ikke. Tjek linket.":"Forløbet kunne ikke startes. Prøv igen om lidt.");})
+  .then(function(){b.disabled=false;});
+});
+$("kodebtn").addEventListener("click",function(){
+  var k=val("kode").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(k.length!==8){showErr("starterr","Koden har otte tegn. Tjek, at du har skrevet hele koden.");return;}
+  resume(k.slice(0,4)+"-"+k.slice(4));
+});
+$("lokalbtn").addEventListener("click",function(){show("laer");paintAi();});
+$("backlater").addEventListener("click",function(){laterOnly=true;$("back").hidden=true;layout();log("forklarer igen først");$("later").focus();});
+$("backgo").addEventListener("click",function(){$("back").hidden=true;log("fortsatte uden at forklare igen");});
+
+/* ---- the expert's link ---- */
+function fagLink(){
+  var on=!!(run&&ark&&ark.fag);
+  $("fagbox").hidden=!on;
+  if(on) $("faglink").value=location.origin+location.pathname+"?fag="+ark.fag;
+}
+function shareArk(){
+  if(!run||!ark) return;
+  api("ark_gem",{kode:run.kode,ark:JSON.stringify({d:ark.d,src:ark.src}),punkter:arr(ark.d&&ark.d.punkter).length})
+    .then(function(r){ark.fag=r.fag;fagLink();queueSave();},
+          function(){showErr("sheeterr","Tjekarket kunne ikke gemmes til fagpersonen. Lav det igen om lidt, eller kopiér det.");});
+}
+$("fagcopy").addEventListener("click",function(){log("kopierede fagperson-link");copyBtn(this,"Kopiér linket",$("faglink").value);});
+$("fagsvar").addEventListener("click",function(){
+  var msg=$("fagmsg"); msg.hidden=false; msg.textContent="Henter …";
+  api("ark_hent",{fag:ark.fag}).then(function(r){
+    var sv=null; try{sv=JSON.parse(r.svar);}catch(e){}
+    if(!sv||!sv.vist){msg.textContent="Fagpersonen har ikke svaret endnu.";return;}
+    renderSheet($("sheet-a"),ark.d,ark.src,{init:sv});
+    msg.textContent="Fagpersonen har svaret. Vurderingen står i tjekarket herunder."; log("så fagpersonens vurdering");
+  },function(){msg.textContent="Svaret kunne ikke hentes. Prøv igen om lidt.";});
+});
+function fagView(tok){
+  var host=$("view-fag"); host.hidden=false;
+  host.appendChild(h("p",{class:"muted",text:"Henter tjekarket …"}));
+  api("ark_hent",{fag:tok}).then(function(r){
+    var a=JSON.parse(r.ark), src=a.src||{}, sv={}; try{sv=JSON.parse(r.svar)||{};}catch(e){}
+    host.textContent="";
+    var own=h("textarea",{id:"fag-fri",class:"tall",placeholder:"Skriv, hvad der er rigtigt, hvad der er forkert, og hvad der mangler"}); own.value=str(sv.fri);
+    var err=h("p",{class:"err",role:"alert",hidden:"hidden",text:"Din vurdering kunne ikke gemmes. Prøv igen om lidt."});
+    var sheetHost=h("div");
+    function send(data){data.fri=own.value.trim();return api("ark_svar",{fag:tok,svar:JSON.stringify(data)});}
+    function open(){
+      own.readOnly=true; btn.parentNode.hidden=true;
+      renderSheet(sheetHost,a.d,src,{init:sv,onSave:function(data){data.vist=true;return send(data);}});
+    }
+    var btn=h("button",{type:"button",class:"btn",text:"Gem og vis tjekarket",on:{click:function(){
+      err.hidden=true; btn.disabled=true;
+      send({vist:false}).then(open,function(){err.hidden=false;btn.disabled=false;});
+    }}});
+    var kids=[h("h2",{text:"Til dig, der kan faget"}),
+      h("p",{text:"En nybegynder har brugt en sprogmodel til at forstå et materiale og har bagefter forklaret det med egne ord. Du bliver bedt om to ting: først din egen vurdering af forklaringen, og derefter et tjekark, hvor en sprogmodel har fundet steder, der bør tjekkes."}),
+      h("p",{class:"note",text:"Sprogmodellens svar er ikke facit. Der står ikke noget navn på forklaringen."})];
+    if(str(src.mat).trim()) kids.push(h("details",{class:"src",open:"open"},[h("summary",{text:"Materialet"}),h("p",{text:src.mat.trim()})]));
+    kids.push(h("div",{class:"field"},[h("span",{class:"label",text:"Nybegynderens forklaring"}),h("p",{class:"quote",text:str(src.own)})]));
+    if(str(src.unpack).trim()) kids.push(h("div",{class:"field"},[h("span",{class:"label",text:"Nybegynderens udpakning af huskeregler"}),h("p",{class:"quote",text:src.unpack})]));
+    kids.push(h("div",{class:"field"},[h("label",{class:"label",for:"fag-fri",text:"Din egen vurdering, før du ser tjekarket"}),own]),err,h("div",{class:"btnrow"},[btn]));
+    host.appendChild(h("section",{class:"panel"},kids));
+    host.appendChild(sheetHost);
+    if(sv.vist) open();
+  },function(e){
+    host.textContent="";
+    host.appendChild(h("section",{class:"panel"},[h("h2",{text:"Tjekarket kunne ikke hentes"}),
+      h("p",{class:"err",text:e&&e.code==="ukendt"?"Linket findes ikke. Tjek, at du har fået hele linket.":"Prøv igen om lidt."})]));
+  });
+}
+
+/* ---- the researcher's page ---- */
+function forskerView(){
+  var host=$("view-forsker"), key="", BET={forstaaet:"Forstået?-forløbet",fri:"Fri chat",begge:"Begge, fordelt ligeligt"};
+  host.hidden=false;
+  try{key=sessionStorage.getItem("forstaaet-forsker")||"";}catch(e){}
+  function load(del,data){
+    var b={noegle:key,del:del||"liste"},k; for(k in (data||{})) b[k]=data[k];
+    return api("forsker",b).then(function(r){try{sessionStorage.setItem("forstaaet-forsker",key);}catch(e){} draw(r);},
+      function(e){login(e&&e.code==="adgang"?"Koden passer ikke.":"Forskersiden kunne ikke hentes. Prøv igen om lidt.");});
+  }
+  function login(msg){
+    host.textContent="";
+    var inp=h("input",{type:"password",id:"fk",autocomplete:"off"});
+    function go(){key=inp.value.trim(); if(key) load();}
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter") go();});
+    host.appendChild(h("section",{class:"panel"},[h("h2",{text:"Forskersiden"}),
+      h("p",{class:"muted",text:"Her opretter du forsøg og følger forløbene. Koden finder du i regnearket under menuen »Forstået?«."}),
+      h("div",{class:"field"},[h("label",{class:"label",for:"fk",text:"Forskerkode"}),inp]),
+      msg?h("p",{class:"err",role:"alert",text:msg}):null,
+      h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Åbn",on:{click:go}})])]));
+  }
+  function linkBtn(label,url){
+    var b=h("button",{type:"button",class:"btn plain",text:label,on:{click:function(){copyBtn(b,label,url);}}}); return b;
+  }
+  function csv(r){
+    var q=function(v){return '"'+String(v).replace(/"/g,'""')+'"';};
+    var t="\ufeff"+[r.kolonner].concat(r.forloeb).map(function(x){return x.map(q).join(";");}).join("\r\n");
+    var a=h("a",{href:URL.createObjectURL(new Blob([t],{type:"text/csv"})),download:"forstaaet-forloeb.csv"});
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function draw(r){
+    host.textContent="";
+    var base=location.origin+location.pathname, K=r.kolonner, c=function(n){return K.indexOf(n);};
+    var titles={}; r.forsog.forEach(function(f){titles[f[0]]=f[1];});
+    var ti=h("input",{type:"text",id:"f-titel"}), ma=h("textarea",{id:"f-mat",class:"tall"}), bi=h("input",{type:"text",id:"f-bil",placeholder:"https://…"});
+    var sel=h("select",{id:"f-bet"},Object.keys(BET).map(function(k){return h("option",{value:k,text:BET[k]});}));
+    var cerr=h("p",{class:"err",role:"alert",hidden:"hidden",text:"Skriv en titel og materialets tekst, eller giv et link til et billede."});
+    host.appendChild(h("section",{class:"panel"},[h("h2",{text:"Forskersiden"}),
+      h("p",{text:r.model?"Sprogmodel: "+r.model+". Alle deltagere får svar fra den, og hvert kald bliver gemt.":"Der er ikke sat en sprogmodel op. Deltagerne bruger deres egen chat. Du sætter en op i regnearket under menuen »Forstået?«."}),
+      h("div",{class:"btnrow"},[
+        h("button",{type:"button",class:"btn plain",text:"Opdater",on:{click:function(){load();}}}),
+        h("button",{type:"button",class:"btn plain",text:"Hent forløbene som CSV",on:{click:function(){csv(r);}}}),
+        h("a",{class:"btn plain",href:r.ark,target:"_blank",rel:"noopener",text:"Åbn regnearket"})])]));
+    host.appendChild(h("section",{class:"panel"},[h("h2",{text:"Forsøg"}),
+      r.forsog.length?h("div",{class:"tablewrap"},[h("table",null,[
+        h("thead",null,[h("tr",null,["Titel","Betingelser","Deltagere","Link til deltagerne"].map(function(t){return h("th",{text:t});}))]),
+        h("tbody",null,r.forsog.map(function(f){
+          var n={forstaaet:0,fri:0}; r.forloeb.forEach(function(x){if(x[c("Forsøg")]===f[0]&&n[x[c("Betingelse")]]!==undefined) n[x[c("Betingelse")]]++;});
+          var antal=f[2]==="begge"?n.forstaaet+" i forløbet, "+n.fri+" i fri chat":String(n.forstaaet+n.fri);
+          return h("tr",null,[h("td",{text:f[1]}),h("td",{text:BET[f[2]]||f[2]}),h("td",{text:antal}),h("td",null,[linkBtn("Kopiér link",base+"?f="+f[0])])]);
+        }))])]):h("p",{class:"muted",text:"Der er ingen forsøg endnu."}),
+      h("h3",{text:"Opret et forsøg"}),
+      h("p",{class:"muted",text:"Alle deltagere i et forsøg får det samme materiale. Vælger du begge betingelser, fordeler siden deltagerne ligeligt mellem dem."}),
+      h("div",{class:"field"},[h("label",{class:"label",for:"f-titel",text:"Titel, som deltagerne ser"}),ti]),
+      h("div",{class:"field"},[h("label",{class:"label",for:"f-mat",text:"Materialets tekst"}),ma]),
+      h("div",{class:"field"},[h("label",{class:"label",for:"f-bil",text:"Link til et billede af materialet (frivilligt)"}),bi]),
+      h("div",{class:"field"},[h("label",{class:"label",for:"f-bet",text:"Betingelser"}),sel]),
+      cerr,
+      h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Opret forsøg",on:{click:function(){
+        if(!ti.value.trim()||!(ma.value.trim()||bi.value.trim())){cerr.hidden=false;return;}
+        this.disabled=true;
+        load("opret",{titel:ti.value.trim(),materiale:ma.value.trim(),billede:bi.value.trim(),betingelser:sel.value});
+      }}})])]));
+    host.appendChild(h("section",{class:"panel"},[h("h2",{text:"Forløb"}),
+      r.forloeb.length?h("div",{class:"tablewrap"},[h("table",null,[
+        h("thead",null,[h("tr",null,["Kode","Forsøg","Betingelse","Nået til","Sidst gemt","Fagperson","Vurderet"].map(function(t){return h("th",{text:t});}))]),
+        h("tbody",null,r.forloeb.slice().reverse().map(function(x){
+          var fag=x[c("Fagkode")];
+          return h("tr",null,[h("td",{text:x[c("Kode")]}),h("td",{text:titles[x[c("Forsøg")]]||"–"}),h("td",{text:x[c("Betingelse")]==="fri"?"Fri chat":"Forløbet"}),
+            h("td",{text:x[c("Nået til")]}),h("td",{text:x[c("Sidst gemt")]}),
+            h("td",null,[fag?linkBtn("Kopiér link",base+"?fag="+fag):"Intet tjekark"]),h("td",{text:x[c("Vurderet")]||"–"})]);
+        }))])]):h("p",{class:"muted",text:"Der er ingen forløb endnu."})]));
+  }
+  if(key) load(); else login();
+}
+function boot(){
+  paintAi();
+  if(!API) return;
+  if(Q.get("fag")){show("fag");fagView(Q.get("fag"));return;}
+  if(Q.has("forsker")){show("forsker");forskerView();return;}
+  show("start");
+  if(Q.get("k")){resume(Q.get("k"));return;}
+  if(Q.get("f")){
+    $("lokalbtn").hidden=true;
+    api("forsog",{f:Q.get("f")}).then(function(r){$("start-title").textContent=r.titel;},
+      function(){showErr("starterr","Forsøget findes ikke. Tjek linket.");});
+  }
+}
 
 /* ---- small parts ---- */
 function profile(box,key){
@@ -461,10 +838,10 @@ function relay(host,prompt,o){
 /* host's last child is the waiting line */
 function askJson(host,p,withImg,soft){
   if(man()){host.lastChild.textContent=WAIT;return relay(host,p,{json:true,soft:soft});}
-  return withImg?sample.json(p,opts()):sample.json(p);
+  return sample.json(p,withImg?opts():{},soft);
 }
 function context(){
-  var L=[RULES,"","MATERIALE:",val("mat")||"(se billedet)"];
+  var L=[fri()?"Her er et materiale, jeg gerne vil forstå. Svar på dansk og uden markdown.":RULES,"","MATERIALE:",val("mat")||"(se billedet)"];
   if(hasImg()) L.push("Billedet er et foto af materialet.");
   if(val("who")) L.push("","OM NYBEGYNDEREN: "+val("who"));
   if(val("words")) L.push("","ORD OG TEGN, NYBEGYNDEREN IKKE FORSTÅR: "+val("words"));
@@ -490,12 +867,12 @@ $("send").addEventListener("click",function(){
   if(!val("mat")&&!imgFile){showErr("chaterr","Skriv noget om materialet i trin 1 først, eller vælg et billede.");return;}
   showErr("chaterr","");
   var prev=transcript();
-  turns.push({role:"user",content:q}); var mine=bubble("user",q); $("q").value="";
+  turns.push({role:"user",content:q}); var mine=bubble("user",q); $("q").value=""; log("spørgsmål",turns.length);
   if(man()){
     var full=context()+(prev?"\n\nSAMTALEN INDTIL NU:\n"+prev:"")+"\n\nSPØRGSMÅL:\n"+q;
     setBusy(true);
     relay($("chat"),prev?q:full,{alt:prev?full:""})
-    .then(function(t){bubble("assistant",t);turns.push({role:"assistant",content:t});},
+    .then(function(t){bubble("assistant",t);turns.push({role:"assistant",content:t});log("svar",turns.length);},
           function(){turns.pop();mine.remove();$("q").value=q;})
     .then(function(){setBusy(false);});
     return;
@@ -503,84 +880,95 @@ $("send").addEventListener("click",function(){
   var out=bubble("assistant","Tænker … Det tager ikke syv en halv million år.");
   ctl=new AbortController(); setBusy(true);
   sample([{role:"user",content:context()}].concat(turns),opts({cache:false,signal:ctl.signal,onText:function(u){out.textContent=u.text;}}))
-  .then(function(r){out.textContent=r.text;turns.push({role:"assistant",content:r.text});},
+  .then(function(r){out.textContent=r.text;turns.push({role:"assistant",content:r.text});log("svar",turns.length);},
         function(e){var keep=e&&e.text; if(keep){out.textContent=keep;turns.push({role:"assistant",content:keep});}else{out.remove();turns.pop();$("q").value=q;} showErr("chaterr",errCopy(e&&e.code));})
   .then(function(){setBusy(false);});
 });
 $("stop").addEventListener("click",function(){if(ctl) ctl.abort();});
 
-function extraBox(title){
-  var box=h("div",{class:"sheet"},[h("h3",{text:title}),h("p",{class:"muted",text:"Tænker …"})]);
+function extraBox(title,bare){
+  var box=h("div",{class:"sheet"},[h("h3",{text:title}),bare?null:h("p",{class:"muted",text:"Tænker …"})]);
   $("extras").appendChild(box); return box;
 }
 function withChat(task){return context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\n"+task;}
+var KEY_Q="Forklar nu huskereglen: Hvad står hver del af billedet for i faget? Brug fagets egne ord. Skriv også, hvor billedet ikke passer.";
+/* list: [{element,hvorfor}]. An entry without "hvorfor" is free text from the user's own chat */
+function skippedBox(box,list){
+  var items=list.filter(function(x){return x.hvorfor;}), free=list.filter(function(x){return !x.hvorfor;});
+  if(items.length) box.appendChild(h("ul",{class:"plainlist"},items.map(function(x){
+    return h("li",null,[h("b",{text:x.element}),": "+x.hvorfor+" ",h("button",{type:"button",class:"btn plain",text:"Spørg om det",on:{click:function(){$("q").value="Hvad betyder "+x.element+"?";$("q").focus();}}})]);
+  })));
+  free.forEach(function(x){box.appendChild(h("p",{class:"quote",text:x.element}));});
+  if(free.length) box.appendChild(h("p",{class:"muted",text:"Vil du vide mere om noget af det, så skriv det i feltet »Dit spørgsmål«."}));
+}
+/* one mnemonic: the picture, the user's own unpacking, then the key */
+function mnemoView(box,m,udp){
+  var ta=h("textarea",{id:"unpack-"+(mnemos.length+1),placeholder:"Skriv med dine egne ord: Hvad står hver del af billedet for?"});
+  if(udp) ta.value=udp;
+  m.ta=ta; mnemos.push(m);
+  var err=h("p",{class:"err",hidden:"hidden",text:"Skriv din egen udpakning først."});
+  var keybox=h("div",{class:"stack tight"});
+  function has(){return !!(m.key||m.dele.length);}
+  function showKey(){
+    m.keyShown=true; btn.disabled=true;
+    if(m.key){keybox.appendChild(h("span",{class:"label",text:"Nøglen"}));keybox.appendChild(h("p",{class:"quote",text:m.key}));}
+    else{
+      keybox.appendChild(h("dl",{class:"pair"},m.dele.reduce(function(a,x){a.push(h("dt",{text:str(x&&x.del)}),h("dd",{text:str(x&&x.staar_for)}));return a;},[])));
+      if(m.passer_ikke) keybox.appendChild(h("p",{class:"note",text:"Her passer billedet ikke: "+m.passer_ikke}));
+    }
+  }
+  var btn=h("button",{type:"button",class:"btn plain",text:has()?"Vis nøglen":"Hent nøglen",on:{click:function(){
+    if(ta.value.trim().length<5){err.hidden=false;return;}
+    err.hidden=true;
+    if(has()){showKey();log("nøgle vist",mnemos.indexOf(m)+1);return;}
+    if(busy) return;
+    btn.disabled=true; setBusy(true);
+    relay(keybox,KEY_Q,{alt:withChat("HUSKEREGLEN: "+m.billede+"\n\n"+KEY_Q)}).then(function(k){m.key=k;showKey();log("nøgle vist",mnemos.indexOf(m)+1);},function(){btn.disabled=false;})
+    .then(function(){setBusy(false);});
+  }}});
+  box.appendChild(h("p",{class:"quote",text:m.billede}));
+  box.appendChild(h("div",{class:"field"},[h("label",{class:"label",for:ta.id,text:"Pak den ud, før du ser nøglen"}),ta]));
+  box.appendChild(err);
+  box.appendChild(h("div",{class:"btnrow"},[btn]));
+  box.appendChild(keybox);
+  if(m.keyShown&&has()) showKey();
+}
 function notaskedOwn(box){
   var t="Find op til 5 ting i materialet (ord, forkortelser, tegn, akser, dele af en figur), som vi ikke har talt om, og som betyder noget for at forstå materialet. Skriv dem som en kort liste med én linje om, hvorfor hver ting er værd at spørge om. Forklar dem ikke endnu.";
   box.lastChild.textContent=WAIT;
   relay(box,t,{alt:withChat(t)}).then(function(txt){
-    box.lastChild.remove(); skipped.push({element:txt,hvorfor:""});
-    box.appendChild(h("p",{class:"quote",text:txt}));
-    box.appendChild(h("p",{class:"muted",text:"Vil du vide mere om noget af det, så skriv det i feltet »Dit spørgsmål«."}));
+    box.lastChild.remove(); var x={element:txt,hvorfor:""}; skipped.push(x); skippedBox(box,[x]);
   },function(){box.remove();}).then(function(){setBusy(false);});
 }
 /* two plain questions: first only the mnemonic, then the key after the user's own unpacking */
 function mnemoOwn(box){
   var t1="Lav én huskeregel (et billede eller en metafor) for hovedpointen i det, vi har talt om. Skriv kun selve huskereglen i én eller to sætninger. Vent med at forklare, hvad delene står for, til jeg beder om det, også selvom reglerne siger noget andet.";
-  var t2="Forklar nu huskereglen: Hvad står hver del af billedet for i faget? Brug fagets egne ord. Skriv også, hvor billedet ikke passer.";
   box.lastChild.textContent=WAIT;
   relay(box,t1,{alt:withChat(t1),note:"Skriver chatten mere end selve huskereglen, så indsæt kun huskereglen."}).then(function(txt){
     box.lastChild.remove();
-    var ta=h("textarea",{id:"unpack-"+(mnemos.length+1),placeholder:"Skriv med dine egne ord: Hvad står hver del af billedet for?"});
-    var m={billede:txt,dele:[],passer_ikke:"",key:"",ta:ta,keyShown:false}; mnemos.push(m);
-    var err=h("p",{class:"err",hidden:"hidden",text:"Skriv din egen udpakning først."});
-    var keybox=h("div",{class:"stack tight"});
-    var btn=h("button",{type:"button",class:"btn plain",text:"Hent nøglen",on:{click:function(){
-      if(ta.value.trim().length<5){err.hidden=false;return;}
-      err.hidden=true; if(busy) return;
-      btn.disabled=true; setBusy(true);
-      relay(keybox,t2,{alt:withChat("HUSKEREGLEN: "+txt+"\n\n"+t2)}).then(function(k){
-        m.key=k; m.keyShown=true;
-        keybox.appendChild(h("span",{class:"label",text:"Nøglen"})); keybox.appendChild(h("p",{class:"quote",text:k}));
-      },function(){btn.disabled=false;}).then(function(){setBusy(false);});
-    }}});
-    box.appendChild(h("p",{class:"quote",text:txt}));
-    box.appendChild(h("div",{class:"field"},[h("label",{class:"label",for:ta.id,text:"Pak den ud, før du henter nøglen"}),ta]));
-    box.appendChild(err);
-    box.appendChild(h("div",{class:"btnrow"},[btn]));
-    box.appendChild(keybox);
+    mnemoView(box,{billede:txt,dele:[],passer_ikke:"",key:"",keyShown:false});
   },function(){box.remove();}).then(function(){setBusy(false);});
 }
 $("notasked").addEventListener("click",function(){
-  var box=extraBox("Det spurgte du ikke om"); setBusy(true);
+  var box=extraBox("Det spurgte du ikke om"); setBusy(true); log("det spurgte jeg ikke om");
   if(man()){notaskedOwn(box);return;}
   var p=context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\nOPGAVE: Find op til 5 ting i materialet (ord, forkortelser, tegn, akser, dele af en figur), som samtalen ikke har forklaret, og som betyder noget for at forstå materialet. Svar kun med et JSON-array af objekter: [{\"element\":\"det, der står i materialet\",\"hvorfor\":\"én kort sætning om, hvorfor det er værd at spørge om\"}]. Brug et tomt array, hvis alt er dækket.";
   askJson(box,p,true).then(function(d){
     box.lastChild.remove();
     if(d&&!Array.isArray(d)){for(var k in d){if(Array.isArray(d[k])){d=d[k];break;}}}
-    var list=arr(d).filter(function(x){return x&&str(x.element);});
+    var list=arr(d).filter(function(x){return x&&str(x.element);}).map(function(x){return {element:str(x.element),hvorfor:str(x.hvorfor)||"Værd at spørge om."};});
     if(!list.length){box.appendChild(h("p",{text:"Sprogmodellen fandt ikke noget, I har sprunget over."}));return;}
-    list.forEach(function(x){skipped.push({element:str(x.element),hvorfor:str(x.hvorfor)});});
-    box.appendChild(h("ul",{class:"plainlist"},list.map(function(x){
-      return h("li",null,[h("b",{text:str(x.element)}),": "+str(x.hvorfor)+" ",h("button",{type:"button",class:"btn plain",text:"Spørg om det",on:{click:function(){$("q").value="Hvad betyder "+str(x.element)+"?";$("q").focus();}}})]);
-    })));
+    list.forEach(function(x){skipped.push(x);});
+    skippedBox(box,list);
   },function(e){box.lastChild.textContent=errCopy(e&&e.code)||"Stoppet.";}).then(function(){setBusy(false);});
 });
 $("mnemo").addEventListener("click",function(){
-  var box=extraBox("Huskeregel"); setBusy(true);
+  var box=extraBox("Huskeregel"); setBusy(true); log("huskeregel");
   if(man()){mnemoOwn(box);return;}
   var p=context()+"\n\nSAMTALEN INDTIL NU:\n"+transcript()+"\n\nOPGAVE: Lav én huskeregel (et billede eller en metafor) for hovedpointen i samtalen. Svar kun med ét JSON-objekt: {\"billede\":\"huskereglen i én eller to sætninger\",\"dele\":[{\"del\":\"en del af billedet\",\"staar_for\":\"det, den står for i faget, med fagets egne ord\"}],\"passer_ikke\":\"én sætning om, hvor billedet ikke passer\"}.";
   askJson(box,p,true).then(function(d){
     box.lastChild.remove(); d=d||{};
-    var ta=h("textarea",{id:"unpack-"+(mnemos.length+1),placeholder:"Skriv med dine egne ord: Hvad står hver del af billedet for?"});
-    var m={billede:str(d.billede),dele:arr(d.dele).map(function(x){return {del:str(x&&x.del),staar_for:str(x&&x.staar_for)};}),passer_ikke:str(d.passer_ikke),ta:ta,keyShown:false};
-    mnemos.push(m);
-    box.appendChild(h("p",{class:"quote",text:m.billede}));
-    box.appendChild(h("div",{class:"field"},[h("label",{class:"label",for:ta.id,text:"Pak den ud, før du ser nøglen"}),ta]));
-    var key=h("div",{hidden:"hidden"},[h("dl",{class:"pair"},m.dele.reduce(function(a,x){a.push(h("dt",{text:x.del}),h("dd",{text:x.staar_for}));return a;},[])),h("p",{class:"note",text:"Her passer billedet ikke: "+m.passer_ikke})]);
-    var err=h("p",{class:"err",hidden:"hidden",text:"Skriv din egen udpakning først."});
-    box.appendChild(err);
-    box.appendChild(h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn plain",text:"Vis nøglen",on:{click:function(){if(ta.value.trim().length<5){err.hidden=false;return;}err.hidden=true;key.hidden=false;m.keyShown=true;this.disabled=true;}}})]));
-    box.appendChild(key);
+    mnemoView(box,{billede:str(d.billede),dele:arr(d.dele).map(function(x){return {del:str(x&&x.del),staar_for:str(x&&x.staar_for)};}),passer_ikke:str(d.passer_ikke),key:"",keyShown:false});
   },function(e){box.lastChild.textContent=errCopy(e&&e.code)||"Stoppet.";}).then(function(){setBusy(false);});
 });
 
@@ -588,24 +976,27 @@ $("mnemo").addEventListener("click",function(){
 function hideConv(hide){
   convHidden=hide; $("conv").hidden=hide; $("hidden-note").hidden=!hide; $("selfbtn").hidden=hide; $("peek").hidden=!hide;
 }
-$("selfbtn").addEventListener("click",function(){hideConv(true);$("own2").focus();});
-$("peek").addEventListener("click",function(){if(val("own2")) peeked=true; hideConv(false);});
+$("selfbtn").addEventListener("click",function(){hideConv(true);log("nu vil jeg forklare selv");$("own2").focus();});
+$("peek").addEventListener("click",function(){if(val("own2")) peeked=true; log("så samtalen igen",val("own2")?"under forklaringen":"før forklaringen"); hideConv(false);});
 $("own2").addEventListener("focus",function(){if(!convHidden&&turns.length) hideConv(true);});
 
 /* ---- before and after ---- */
-$("cmpbtn").addEventListener("click",function(){
-  if(val("own2").length<10){showErr("cmperr","Skriv din forklaring efter i trin 4 først.");return;}
-  showErr("cmperr","");
+function showCmp(){
   $("cmp-before").textContent=val("own1")||"(Du skrev ikke noget før.)";
   $("cmp-after").textContent=val("own2");
   $("cmp-l1").textContent="Før"+(conf.a?" · sikker "+conf.a:""); $("cmp-l2").textContent="Efter"+(conf.b?" · sikker "+conf.b:"");
-  $("cmp").hidden=false;
+  $("cmp").hidden=false; cmpShown=true;
+}
+$("cmpbtn").addEventListener("click",function(){
+  if(val("own2").length<10){showErr("cmperr","Skriv din forklaring efter i trin 4 først.");return;}
+  showErr("cmperr",""); showCmp(); log("før og efter vist");
 });
 
 /* ---- image ---- */
 $("img").addEventListener("change",function(){
-  imgFile=this.files&&this.files[0]?this.files[0]:null;
+  imgFile=this.files&&this.files[0]?this.files[0]:null; imgData=null;
   var t=$("thumb"); if(imgFile){try{t.src=URL.createObjectURL(imgFile);t.hidden=false;}catch(e){t.hidden=true;}}else{t.hidden=true;}
+  log("billede valgt");
 });
 
 /* ---- quote check ---- */
@@ -617,19 +1008,20 @@ function found(quote,text){
 }
 
 /* ---- sheet ---- */
-function renderSheet(target,d,src){
-  target.textContent=""; d=d||{}; src=src||{};
-  var key="o"+(++sheetN); conf[key]=0;
+function renderSheet(target,d,src,o){
+  target.textContent=""; d=d||{}; src=src||{}; o=o||{};
+  var init=o.init||{}, key="o"+(++sheetN); conf[key]=+init.samlet||0;
   var points=arr(d.punkter).filter(function(x){return x&&(str(x.bruger)||str(x.forskel));});
-  var state=points.map(function(){return {mark:"",ta:null};});
+  var state=points.map(function(x,i){return {mark:str((arr(init.punkter)[i]||{}).mark),ta:null};});
   var sheet=h("div",{class:"sheet"},[h("h3",{text:"Tjekark til fagpersonen"}),
     h("p",{text:"Sprogmodellens svar er ikke facit. En forskel kan skyldes brugeren, sprogmodellen eller et bevidst valg. Markér, om brugerens udsagn holder, og skriv gerne hvorfor."})]);
   if(src.meta) sheet.appendChild(h("p",{class:"muted",text:src.meta}));
+  if(str(init.fri)&&!o.onSave) sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Fagpersonens egen vurdering, skrevet før tjekarket"}),h("p",{class:"quote",text:init.fri})]));
   function detail(title,text){if(str(text).trim()) sheet.appendChild(h("details",{class:"src"},[h("summary",{text:title}),h("p",{text:text.trim()})]));}
   detail("Materialet",src.mat); detail("Hele brugerens forklaring",src.own); detail("Brugerens udpakning af huskeregler",src.unpack); detail("Alt, sprogmodellen har sagt",src.said);
   var rawTa=null;
   if(str(d.raw)){
-    rawTa=h("textarea",{class:"short",id:key+"-r",placeholder:"Skriv, hvad der er rigtigt, og hvorfor"});
+    rawTa=h("textarea",{class:"short",id:key+"-r",placeholder:"Skriv, hvad der er rigtigt, og hvorfor"}); rawTa.value=str(init.raw);
     sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Sprogmodellens sammenligning. Den kunne ikke deles op i punkter"}),h("p",{class:"quote",text:d.raw}),
       h("div",{class:"field"},[h("label",{class:"label",for:rawTa.id,text:"Vurdering og begrundelse"}),rawTa])]));
   }
@@ -637,7 +1029,7 @@ function renderSheet(target,d,src){
   points.forEach(function(x,i){
     var MARKS=[["✓","Holder"],["÷","Forkert"],["~","Mangler noget"],["?","Kan ikke vurderes"]];
     var row=h("div",{class:"marks",role:"group","aria-label":"Vurdering af brugerens udsagn"},MARKS.map(function(m){
-      return h("button",{type:"button",class:m[0]==="?"?"wide":"","aria-pressed":"false","aria-label":m[1],"data-m":m[0],text:m[0]==="?"?"Kan ikke vurderes":m[0],on:{click:function(){
+      return h("button",{type:"button",class:m[0]==="?"?"wide":"","aria-pressed":String(state[i].mark===m[0]),"aria-label":m[1],"data-m":m[0],text:m[0]==="?"?"Kan ikke vurderes":m[0],on:{click:function(){
         state[i].mark=state[i].mark===m[0]?"":m[0]; Array.prototype.forEach.call(row.children,function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-m")===state[i].mark));});
       }}});
     }));
@@ -647,7 +1039,7 @@ function renderSheet(target,d,src){
       else if(src.check&&!found(text,srcText)) kids.push(" ",h("span",{class:"tag flag",text:"Ikke fundet ordret i teksten"}));
       return h("dd",{class:cls||null},kids);
     }
-    var ta=h("textarea",{class:"short",id:key+"-c"+i,placeholder:"Skriv, hvad der er rigtigt, og hvorfor"}); state[i].ta=ta;
+    var ta=h("textarea",{class:"short",id:key+"-c"+i,placeholder:"Skriv, hvad der er rigtigt, og hvorfor"}); state[i].ta=ta; ta.value=str((arr(init.punkter)[i]||{}).tekst);
     sheet.appendChild(h("div",{class:"item"},[h("dl",{class:"pair"},[
       h("dt",{text:"Brugeren skrev"}),dd(str(x.bruger),"bruger",(src.own||"")+"\n"+(src.unpack||"")),
       h("dt",{text:"Sprogmodellen skrev"}),dd(str(x.model),"model",src.said||""),
@@ -663,7 +1055,7 @@ function renderSheet(target,d,src){
   }
   var enige=listBlock("Her er teksterne enige. Det bør stadig kontrolleres",d.enige);
   var kun=listBlock("Det kan kun du afgøre",d.kun_fagperson);
-  var extra=h("textarea",{class:"short",id:key+"-x",placeholder:"Skriv det, hverken brugeren eller sprogmodellen har fået med"});
+  var extra=h("textarea",{class:"short",id:key+"-x",placeholder:"Skriv det, hverken brugeren eller sprogmodellen har fået med"}); extra.value=str(init.overset);
   sheet.appendChild(h("div",{class:"item"},[h("div",{class:"field"},[h("label",{class:"label",for:extra.id,text:"Har sprogmodellen overset noget?"}),extra])]));
   var pbox=h("div");
   sheet.appendChild(h("div",{class:"item"},[h("span",{class:"label",text:"Samlet: Hvor godt er det forstået? Spring over, hvis grundlaget er for spinkelt."}),pbox]));
@@ -680,21 +1072,32 @@ function renderSheet(target,d,src){
     [["MATERIALET",src.mat],["HELE BRUGERENS FORKLARING",src.own],["BRUGERENS UDPAKNING AF HUSKEREGLER",src.unpack],["ALT, SPROGMODELLEN HAR SAGT",src.said]].forEach(function(p){if(str(p[1]).trim()) L.push("--- "+p[0]+" ---",p[1].trim(),"");});
     copyBtn(btn,"Kopiér tjekarket",L.join("\n"));
   }}});
-  sheet.appendChild(h("div",{class:"btnrow"},[btn]));
+  var row=[btn], smsg=h("p",{class:"ok",role:"status",hidden:"hidden"});
+  if(o.onSave){
+    var sb=h("button",{type:"button",class:"btn",text:"Gem vurdering",on:{click:function(){
+      sb.disabled=true; smsg.hidden=true;
+      o.onSave({punkter:state.map(function(x){return {mark:x.mark,tekst:x.ta.value.trim()};}),raw:rawTa?rawTa.value.trim():"",overset:extra.value.trim(),samlet:conf[key]||0})
+      .then(function(){smsg.className="ok";smsg.textContent="Gemt. Tak for hjælpen. Du kan rette og gemme igen.";},
+            function(){smsg.className="err";smsg.textContent="Vurderingen kunne ikke gemmes. Prøv igen om lidt.";})
+      .then(function(){smsg.hidden=false;sb.disabled=false;});
+    }}});
+    row.unshift(sb);
+  }
+  sheet.appendChild(h("div",{class:"btnrow"},row)); sheet.appendChild(smsg);
   target.appendChild(sheet);
 }
-function makeSheet(src,target,errId){
+function makeSheet(src,target,errId,done){
   if(str(src.own).trim().length<10){showErr(errId,"Der mangler en forklaring at tjekke.");return;}
   if(str(src.said).trim().length<10){showErr(errId,"Der mangler et svar fra sprogmodellen at sammenligne med.");return;}
   showErr(errId,""); target.textContent=""; target.appendChild(h("p",{class:"muted",text:"Sammenligner …"})); setBusy(true);
   var p=SHEET_PROMPT+(str(src.mat).trim()?"\n\nMATERIALET:\n"+src.mat.trim():"")+"\n\nNYBEGYNDERENS FORKLARING:\n"+src.own.trim()+(str(src.unpack).trim()?"\n\nNYBEGYNDERENS UDPAKNING AF HUSKEREGLER:\n"+src.unpack.trim():"")+"\n\nALT, SPROGMODELLEN HAR SAGT:\n"+src.said.trim().slice(0,60000);
   src.check=true;
-  askJson(target,p,false,true).then(function(d){renderSheet(target,d,src);},function(e){target.textContent="";showErr(errId,errCopy(e&&e.code));})
+  askJson(target,p,false,true).then(function(d){renderSheet(target,d,src);if(done) done(d,src);},function(e){target.textContent="";showErr(errId,errCopy(e&&e.code));})
   .then(function(){setBusy(false);});
 }
 $("makesheet").addEventListener("click",function(){
   var meta="Sikker før: "+(conf.a||"–")+" · sikker efter: "+(conf.b||"–")+(peeked?" · Brugeren så samtalen igen undervejs i sin forklaring.":"");
-  makeSheet({mat:val("mat"),own:val("own2"),unpack:unpackText(),said:modelSaid(),meta:meta},$("sheet-a"),"sheeterr");
+  makeSheet({mat:val("mat"),own:val("own2"),unpack:unpackText(),said:modelSaid(),meta:meta},$("sheet-a"),"sheeterr",function(d,src){ark={d:d,src:src,fag:(ark&&ark.fag)||""};log("tjekark lavet",arr(d&&d.punkter).length);shareArk();});
 });
 $("b-go").addEventListener("click",function(){makeSheet({own:val("b-own"),said:val("b-chat"),meta:""},$("sheet-b"),"b-err");});
 
@@ -712,7 +1115,7 @@ function exportText(){
   return L.join("\n");
 }
 $("export").addEventListener("click",function(){
-  var txt=exportText(), out=$("exportout");
+  var txt=exportText(), out=$("exportout"); log("kopierede forløbet");
   copyText(txt,function(){$("exportmsg").textContent="Kopieret. Indsæt teksten i dine noter, så du kan fortsætte senere.";$("exportmsg").hidden=false;},
     function(){out.hidden=false;out.value=txt;out.focus();out.select();$("exportmsg").textContent="Markér teksten herunder, kopiér den, og indsæt den i dine noter, så du kan fortsætte senere.";$("exportmsg").hidden=false;});
 });
@@ -723,12 +1126,16 @@ $("laterbtn").addEventListener("click",function(){
   showErr("latererr","");
   if(!val("laterold")&&val("own2")) $("laterold").value=val("own2");
   $("laternew").textContent=val("later"); $("laterbox").hidden=false;
+  if(!laterAt){var d=new Date();laterAt=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+  if(laterOnly){laterOnly=false;layout();}
+  log("forklaring senere vist");
 });
 
 /* ---- tabs ---- */
 var TABS=["laer","tjek","regler"];
 TABS.forEach(function(t){$("tab-"+t).addEventListener("click",function(){
   TABS.forEach(function(x){$("tab-"+x).setAttribute("aria-selected",String(x===t));$("view-"+x).hidden=x!==t;});
+  log("fane",t);
 });});
 
 /* ---- init ---- */
@@ -737,7 +1144,7 @@ $("b-own").value=EX_OWN; $("b-chat").value=EX_CHAT;
 $("rules").textContent=RULES; $("sheetprompt").textContent=SHEET_PROMPT;
 $("copyrules").addEventListener("click",function(){copyBtn(this,"Kopiér reglerne",RULES);});
 renderSheet($("sheet-ex"),EXAMPLE,{});
-paintAi();
+boot();
 })();
 </script>
 
