@@ -118,7 +118,7 @@ pre.prompt{margin:0;border:1px solid #c9cdd6;background:#fff;padding:12px;white-
 .check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
 .check input{width:24px;height:24px;flex:none;margin:2px 0 0;accent-color:var(--violet)}
 .tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:520px}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:460px}
 th,td{border:1px solid #c9cdd6;padding:8px 10px;text-align:left;vertical-align:top}
 th{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;background:#f3f4f6}
 .goalrow{display:grid;gap:6px;padding:8px 0;border-top:1px solid #dde0e6}
@@ -634,7 +634,8 @@ function laererView(){
   }
   LR.draw=function(r){
     host.textContent="";
-    var link=location.origin+location.pathname+"?k="+r.kode, rows=r.ark, sure=0;
+    var link=location.origin+location.pathname+"?k="+r.kode, rows=r.ark, sure=0, grupper=[];
+    rows.forEach(function(x){var g=grupper.filter(function(y){return y[0]===x[3];})[0]; if(!g){g=[x[3],[]];grupper.push(g);} g[1].push(x);});
     function parse(x){try{return JSON.parse(x[13]);}catch(e){return {bad:true};}}
     function ts(x){return {tm:[0,1,2,3,4,5].map(function(i){var c=String(x[9]).charAt(i);return c==="y"||c==="p"||c==="n"?c:"";}),note:x[10],by:x[11]};}
     var lb=h("button",{type:"button",class:"btn plain",text:"Kopiér elevernes link",on:{click:function(){copy(lb,"Kopiér elevernes link",link);}}});
@@ -653,12 +654,13 @@ function laererView(){
         try{sessionStorage.removeItem("forstaaet-laerer");}catch(e){}
         LR.k="";LR.n="";login();scrollTo(0,0);
       }}}),h("span",{class:"muted",text:"Arkene bliver liggende. Du åbner klassen igen med koderne."})]),
-      rows.length?h("div",{class:"tablewrap"},[h("table",null,[
-        h("thead",null,[h("tr",null,["Navn","Emne","Modtaget","Ord: trin 3 / forklaring","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
-        h("tbody",null,rows.map(function(x){
-          return h("tr",null,[h("td",{text:x[2]}),h("td",{text:x[3]}),h("td",{text:String(x[4]).slice(5,16)}),h("td",{text:x[7]+" / "+x[8]}),h("td",{text:x[12]?"Ja":"Nej"}),
+      rows.length?h("div",{class:"stack tight"},grupper.map(function(g){return h("div",{class:"stack tight"},[
+        h("h3",{text:g[0]+" · "+g[1].length+" ark"}),h("div",{class:"tablewrap"},[h("table",null,[
+        h("thead",null,[h("tr",null,["Navn","Modtaget","Ord: trin 3 / forklaring","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
+        h("tbody",null,g[1].map(function(x){
+          return h("tr",null,[h("td",{text:x[2]}),h("td",{text:String(x[4]).slice(5,16)}),h("td",{text:x[7]+" / "+x[8]}),h("td",{text:x[12]?"Ja":"Nej"}),
             h("td",null,[h("button",{type:"button",class:"btn plain",text:CUR===x[0]?"Åbent":"Åbn",on:{click:function(){TEACHER=parse(x);TS=ts(x);CUR=x[0];LR.draw(r);drawSheet();$("sheet").scrollIntoView();}}})])]);
-        }))])]):h("p",{class:"muted",text:"Der er ikke kommet nogen ark endnu."})]));
+        }))])])]);})):h("p",{class:"muted",text:"Der er ikke kommet nogen ark endnu."})]));
     LR.ny=false;
   };
   if(LR.k&&LR.n) load(); else login();
