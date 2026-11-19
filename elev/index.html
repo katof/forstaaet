@@ -679,7 +679,7 @@ function drawSheet(){
     document.body.classList.add("printing"); window.print(); setTimeout(function(){document.body.classList.remove("printing");},500);
   }}});
   var msg=h("p",{class:"ok",role:"status",hidden:"hidden"});
-  var sv=CUR?h("button",{type:"button",class:"btn",text:"Gem mine kryds",on:{click:function(){
+  var sv=CUR&&!LR.laast?h("button",{type:"button",class:"btn",text:"Gem mine kryds",on:{click:function(){
     sv.disabled=true; msg.hidden=true;
     api("kl_laerer",{k:LR.k,noegle:LR.n,del:"gem",id:CUR,tm:TS.tm.map(function(x){return x||"-";}).join(""),note:TS.note,by:TS.by})
       .then(function(r){msg.className="ok";msg.textContent="Gemt. Eleven kan se dine kryds og din kommentar.";LR.draw(r);},
@@ -687,6 +687,7 @@ function drawSheet(){
       .then(function(){msg.hidden=false;sv.disabled=false;});
   }}}):null;
   sheet.appendChild(h("div",{class:"btnrow"},[sv,pr,cp])); sheet.appendChild(msg);
+  if(CUR&&LR.laast) sheet.appendChild(h("p",{class:"muted",text:"Klassen er et låst eksempel, så kryds og kommentarer kan ikke gemmes her."}));
   host.appendChild(sheet);
 }
 
@@ -702,7 +703,7 @@ $("sendbtn").addEventListener("click",function(){
     var ok="Sendt til "+r.navn+" kl. "+klok()+". Retter du noget, kan du sende igen.";
     return api("kl_tegn",{k:S.klasse,id:r.id,data:PEN.length?JSON.stringify(PEN):""}).then(function(){sendMsg(ok);},
       function(){sendMsg("Arket er sendt, men papiret med din tegning kom ikke med. Prøv at sende igen.",true);});
-  },function(e){sendMsg(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":e&&e.code==="fuld"?"Klassen er fuld. Sig det til din lærer.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
+  },function(e){sendMsg(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":e&&e.code==="fuld"?"Klassen er fuld. Sig det til din lærer.":e&&e.code==="laast"?"Denne klasse er et låst eksempel og tager ikke imod ark. Bed din lærer om et link til jeres egen klasse.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
   .then(function(){b.disabled=false;});
 });
 $("returbtn").addEventListener("click",function(){
@@ -743,7 +744,7 @@ function laererView(){
     },function(e){login(e&&e.code==="adgang"?"Koderne passer ikke.":"Klassen kunne ikke hentes. Prøv igen om lidt.");});
   }
   LR.draw=function(r){
-    host.textContent="";
+    host.textContent=""; LR.laast=!!r.laast;
     var link=location.origin+location.pathname+"?k="+r.kode, rows=r.ark, sure=0, grupper=[];
     rows.forEach(function(x){var g=grupper.filter(function(y){return y[0]===x[3];})[0]; if(!g){g=[x[3],[]];grupper.push(g);} g[1].push(x);});
     function parse(x){try{return JSON.parse(x[13]);}catch(e){return {bad:true};}}
@@ -759,7 +760,8 @@ function laererView(){
     host.appendChild(h("div",{class:"stack tight"},[h("h3",{text:r.navn}),
       LR.ny?h("p",{class:"note",text:"Klassen er oprettet. Klassekoden er "+r.kode+", og lærerkoden er "+LR.n+". Skriv lærerkoden ned. Den vises ikke igen."}):null,
       h("p",{class:"muted",text:"Giv eleverne dette link: "+link}),
-      h("div",{class:"btnrow"},[lb,h("button",{type:"button",class:"btn plain",text:"Opdater",on:{click:function(){load();}}}),all,del]),
+      r.laast?h("p",{class:"note",text:"Denne klasse er et låst eksempel. Du kan åbne og læse alle ark, men ikke rette, sætte kryds eller slette. Luk klassen, og opret din egen, hvis du vil prøve selv."}):null,
+      h("div",{class:"btnrow"},[lb,h("button",{type:"button",class:"btn plain",text:"Opdater",on:{click:function(){load();}}}),all,r.laast?null:del]),
       h("div",{class:"btnrow"},[h("button",{type:"button",class:"btn",text:"Luk klassen",on:{click:function(){
         try{sessionStorage.removeItem("forstaaet-laerer");}catch(e){}
         LR.k="";LR.n="";login();scrollTo(0,0);
@@ -803,7 +805,7 @@ $("alenesend").addEventListener("click",function(){
       sig((r.fundet?"Sendt til "+r.navn+". Arket er lagt sammen med dit forløb.":"Sendt til "+r.navn+". Din lærer kan se arket under dit navn.")+" Tryk »Ny elev: ryd arket«, før den næste bruger tabletten.");
       aleneSendt=true; try{localStorage.removeItem(aleneKey());}catch(e){}
     },
-          function(e){sig(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
+          function(e){sig(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":e&&e.code==="laast"?"Denne klasse er et låst eksempel og tager ikke imod ark. Bed din lærer om et link til jeres egen klasse.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
     .then(function(){b.disabled=false;});
 });
 var aleneSikker=0;
