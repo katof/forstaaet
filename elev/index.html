@@ -243,6 +243,7 @@ body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
     <section class="panel" id="sc-laerer" hidden>
       <h2>Lærerside</h2>
       <div id="lr"></div>
+      <p><a href="./">Tilbage til elevhåndbogen</a></p>
     </section>
 
     <!-- the teacher's sheet -->
@@ -303,6 +304,11 @@ body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
   </div>
 
   <div class="stack" id="view-lar" role="tabpanel" aria-labelledby="tab-lar" hidden>
+    <section class="panel flat" id="laererind">
+      <h2>Lærersiden</h2>
+      <p>På lærersiden opretter du en klasse og får et link til eleverne. Deres ark kommer ind af sig selv, når de trykker »Send til min lærer«, og du krydser målene af dér.</p>
+      <div class="btnrow"><a class="btn" href="?laerer">Åbn lærersiden</a></div>
+    </section>
     <section class="panel flat">
       <h2>Til læreren</h2>
       <p>Håndbogen bygger på de seks faglige mål for 7. klassetrin i den færøske læreplan for alis- og evnafrøði (fysik og kemi). Eleven vælger et emne fra et af fagets fire kerneområder og går fire trin igennem: gæt, gør, spørg, forklar. Det passer til én lektion, hvis forsøget er stillet frem.</p>
@@ -726,6 +732,7 @@ profile($("conf1"),"a"); profile($("conf2"),"b");
 if(URLQ.get("k")){S.klasse=URLQ.get("k").toUpperCase().replace(/[^A-Z0-9]/g,"");}
 if(!TEACHER&&S.step!=="start"&&!topic()) S.step="start";
 show();
+$("laererind").hidden=!API;
 if(LAERER) laererView();
 })();
 </script>
