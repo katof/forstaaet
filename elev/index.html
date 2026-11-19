@@ -268,7 +268,10 @@ body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
       <div class="field"><label class="label" for="nytxt">Eller skriv her</label><textarea id="nytxt"></textarea></div>
       <div id="alene" class="stack tight" hidden>
         <div class="field"><label class="label" for="alenenavn">Dit navn, som din lærer kender det</label><input type="text" id="alenenavn" autocomplete="off"></div>
-        <div class="btnrow"><button type="button" class="btn" id="alenesend">Send til min lærer</button></div>
+        <div class="btnrow">
+          <button type="button" class="btn" id="alenesend">Send til min lærer</button>
+          <button type="button" class="btn plain" id="aleneny">Ny elev: ryd arket</button>
+        </div>
         <p class="ok" id="alenemsg" role="status" hidden></p>
       </div>
     </section>
@@ -459,8 +462,15 @@ if(!S.conf) S.conf={a:0,b:0};
 if(ORDER.indexOf(S.step)<0) S.step="start";
 function emneNavn(id){var a=AREAS.filter(function(x){return x[2].indexOf(id)>-1;})[0]; return a&&TP[id]?a[1]+": "+TP[id].n:"";}
 function emneId(navn){for(var id in TP){if(emneNavn(id)===navn) return id;} return "";}
+var aleneSendt=false;
+function aleneKey(){return KEY+"-ark-"+ALENE;}
+function aleneGem(){
+  if(aleneSendt) return;
+  try{localStorage.setItem(aleneKey(),JSON.stringify({navn:$("alenenavn").value,txt:$("nytxt").value,pen:PEN}));}catch(e){}
+}
 function store(){
   if(TEACHER||LAERER) return;
+  if(ALENE){aleneGem();return;}
   FIELDS.forEach(function(id){S.f[id]=$(id).value;}); S.ok=$("ok").checked;
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
 }
@@ -568,7 +578,7 @@ function drawPaper(c,strokes){
     x.stroke();
   });
 }
-function penStore(){if(TEACHER||LAERER) return; try{localStorage.setItem(PENKEY,JSON.stringify(PEN));}catch(e){}}
+function penStore(){if(TEACHER||LAERER) return; if(ALENE){aleneGem();return;} try{localStorage.setItem(PENKEY,JSON.stringify(PEN));}catch(e){}}
 (function(){
   var c=$("papir"), cur=null;
   function pos(e){var r=c.getBoundingClientRect(); return [Math.round((e.clientX-r.left)/r.width*1000),Math.round((e.clientY-r.top)/r.height*700)];}
@@ -789,9 +799,21 @@ $("alenesend").addEventListener("click",function(){
   if(!PEN.length&&val("nytxt").length<15){sig("Skriv eller tegn dit svar først.",true);return;}
   b.disabled=true;
   api("kl_papir",{k:S.klasse,emne:emneNavn(ALENE),q:TP[ALENE].q,nyq:TP[ALENE].ny,navn:val("alenenavn"),ny:val("nytxt"),data:PEN.length?JSON.stringify(PEN):""})
-    .then(function(r){sig(r.fundet?"Sendt til "+r.navn+". Arket er lagt sammen med dit forløb.":"Sendt til "+r.navn+". Din lærer kan se arket under dit navn.");},
+    .then(function(r){
+      sig((r.fundet?"Sendt til "+r.navn+". Arket er lagt sammen med dit forløb.":"Sendt til "+r.navn+". Din lærer kan se arket under dit navn.")+" Tryk »Ny elev: ryd arket«, før den næste bruger tabletten.");
+      aleneSendt=true; try{localStorage.removeItem(aleneKey());}catch(e){}
+    },
           function(e){sig(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
     .then(function(){b.disabled=false;});
+});
+var aleneSikker=0;
+$("aleneny").addEventListener("click",function(){
+  var b=this;
+  if(!aleneSendt&&Date.now()-aleneSikker>5000){aleneSikker=Date.now();b.textContent="Tryk igen for at slette alt på arket";setTimeout(function(){b.textContent="Ny elev: ryd arket";},5000);return;}
+  aleneSikker=0; aleneSendt=false; b.textContent="Ny elev: ryd arket";
+  $("alenenavn").value=""; $("nytxt").value=""; PEN=[]; drawPaper($("papir"),PEN);
+  $("alenemsg").hidden=true; try{localStorage.removeItem(aleneKey());}catch(e){}
+  scrollTo(0,0);
 });
 $("laterbtn").addEventListener("click",function(){
   if(val("later").length<5){err("Skriv din forklaring først, også selvom du ikke husker det hele.");return;}
@@ -867,6 +889,11 @@ $("rules").textContent=RULES;
 profile($("conf1"),"a"); profile($("conf2"),"b");
 if(URLQ.get("k")){S.klasse=URLQ.get("k").toUpperCase().replace(/[^A-Z0-9]/g,"");}
 if(API&&S.klasse&&!TEACHER&&!LAERER&&TP[URLQ.get("ark")]) ALENE=URLQ.get("ark");
+if(ALENE){   /* nothing from the pupil's own journey or from another topic's sheet is carried over */
+  var kladde={}; try{kladde=JSON.parse(localStorage.getItem(aleneKey())||"{}")||{};}catch(e){}
+  $("nytxt").value=typeof kladde.txt==="string"?kladde.txt:""; $("alenenavn").value=typeof kladde.navn==="string"?kladde.navn:"";
+  PEN=Array.isArray(kladde.pen)?kladde.pen:[];
+}
 if(!TEACHER&&S.step!=="start"&&!topic()) S.step="start";
 show();
 $("laererind").hidden=!API;
