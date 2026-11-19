@@ -144,6 +144,7 @@ body.serious .chips button[aria-pressed="true"]{background:var(--ink);border-col
 body.serious textarea,body.serious input[type=text],body.serious input[type=password]{border:1px solid #9aa0ad;border-radius:4px}
 body.serious .credit{color:var(--muted)}
 body.laerer #steps,body.laerer #nav,body.laerer #sc-ark>*:not(#sheet){display:none!important}
+body.arkalene #steps,body.arkalene #nav,body.arkalene .tabs{display:none!important}
 body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
 .papir{border:2px solid #cfc4a6;border-radius:12px;overflow:hidden;background:#fff}
 #papir{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
@@ -265,6 +266,11 @@ body.laerer #sc-ark{border:0;box-shadow:none;padding:0;background:none}
       </div>
       <div class="papir"><canvas id="papir" width="1000" height="700" aria-label="Papir til at skrive og tegne på"></canvas></div>
       <div class="field"><label class="label" for="nytxt">Eller skriv her</label><textarea id="nytxt"></textarea></div>
+      <div id="alene" class="stack tight" hidden>
+        <div class="field"><label class="label" for="alenenavn">Dit navn, som din lærer kender det</label><input type="text" id="alenenavn" autocomplete="off"></div>
+        <div class="btnrow"><button type="button" class="btn" id="alenesend">Send til min lærer</button></div>
+        <p class="ok" id="alenemsg" role="status" hidden></p>
+      </div>
     </section>
 
     <section class="panel" id="sc-laerer" hidden>
@@ -430,7 +436,7 @@ function clean(t){return String(t||"").replace(/^[ \t]*```[a-zA-Z]*[ \t]*$/gm,""
 var CHATS=[["Åbn SkoleGPT","https://skolegpt.dk/"],["Åbn Copilot","https://m365.cloud.microsoft/chat"]];
 /* storage for class pages: a Google Sheet script. Empty API: no classes, the pupil sends a link instead */
 var API="https://script.google.com/macros/s/AKfycbydHaR4yCOYHz8Sb5fnwlKBm46e7DOT8D34ziF3q_M9rZdoNgWRx80xesZKbcWRxcPeiA/exec";
-var URLQ=new URLSearchParams(location.search), LAERER=!!API&&URLQ.has("laerer"), CUR="", LR={};
+var URLQ=new URLSearchParams(location.search), LAERER=!!API&&URLQ.has("laerer"), CUR="", LR={}, ALENE="";
 function api(act,data){
   var body={act:act},k; for(k in (data||{})) body[k]=data[k];
   return fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
@@ -439,7 +445,7 @@ function api(act,data){
 }
 
 /* ---- state, kept in this browser only ---- */
-var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn","pas","nytxt","nyown"], ORDER=["start",1,2,3,4,"ny","ark"];
+var KEY="forstaaet-ae7-da", FIELDS=["ownq","ownexp","hyp","obs","kort","home","later","navn","pas","nytxt","nyown","alenenavn"], ORDER=["start",1,2,3,4,"ny","ark"];
 function fresh(){return {step:"start",area:"",topic:"",f:{},conf:{a:0,b:0},ok:false,rounds:[{a:"",mine:""}],klasse:"",arkid:""};}
 /* a link from a pupil (#a=...) carries the whole sheet; the teacher ticks the goals in the teacher's own browser */
 var TEACHER=null, TS={tm:["","","","","",""],note:"",by:""};
@@ -451,6 +457,8 @@ try{var saved=JSON.parse(localStorage.getItem(KEY)||"null"); if(saved&&typeof sa
 if(!Array.isArray(S.rounds)||!S.rounds.length) S.rounds=[{a:"",mine:""}];
 if(!S.conf) S.conf={a:0,b:0};
 if(ORDER.indexOf(S.step)<0) S.step="start";
+function emneNavn(id){var a=AREAS.filter(function(x){return x[2].indexOf(id)>-1;})[0]; return a&&TP[id]?a[1]+": "+TP[id].n:"";}
+function emneId(navn){for(var id in TP){if(emneNavn(id)===navn) return id;} return "";}
 function store(){
   if(TEACHER||LAERER) return;
   FIELDS.forEach(function(id){S.f[id]=$(id).value;}); S.ok=$("ok").checked;
@@ -621,6 +629,7 @@ function drawSheet(){
   var D=TEACHER||snap(), R=Array.isArray(D.r)?D.r:[];
   var w3=R.reduce(function(n,r){return n+words(String(r[1]||""));},0), w4=words(String(D.kort||""));
   var sheet=h("div",{class:"sheet"},[h("h3",{text:TEACHER?"Ark fra "+(D.navn||"en elev"):"Dit ark"}),
+    D.kunpapir?h("p",{class:"note",text:"Eleven har kun afleveret arket uden AI. Der er intet forløb med dette navn i klassen."}):null,
     block("Emne",D.emne), block("Spørgsmålet",D.q),
     h("div",{class:"item"},[h("span",{class:"stop",text:"Det vigtigste: gæt, forklaring og ny situation"})]),
     block("Elevens gæt før forsøget"+(D.ca?" (sikker: "+D.ca+" af 5)":""),D.hyp,"quote"),
@@ -746,10 +755,14 @@ function laererView(){
         LR.k="";LR.n="";login();scrollTo(0,0);
       }}}),h("span",{class:"muted",text:"Arkene bliver liggende. Du åbner klassen igen med koderne."})]),
       rows.length?h("div",{class:"stack tight"},grupper.map(function(g){return h("div",{class:"stack tight"},[
-        h("h3",{text:g[0]+" · "+g[1].length+" ark"}),h("div",{class:"tablewrap"},[h("table",null,[
-        h("thead",null,[h("tr",null,["Navn","Modtaget","Ord: trin 3 / forklaring","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
+        h("h3",{text:g[0]+" · "+g[1].length+" ark"}),
+        emneId(g[0])?(function(){var u=location.origin+location.pathname+"?k="+r.kode+"&ark="+emneId(g[0]);
+          var kb=h("button",{type:"button",class:"btn plain",text:"Kopiér link til arket uden AI",on:{click:function(){copy(kb,"Kopiér link til arket uden AI",u);}}});
+          return h("div",{class:"btnrow"},[kb,h("a",{href:u,target:"_blank",rel:"noopener",text:"Åbn arket"})]);})():null,
+        h("div",{class:"tablewrap"},[h("table",null,[
+        h("thead",null,[h("tr",null,["Navn","Modtaget","Ord: trin 3 / forklaring","Ark uden AI","Vurderet",""].map(function(t){return h("th",{text:t});}))]),
         h("tbody",null,g[1].map(function(x){
-          return h("tr",null,[h("td",{text:x[2]}),h("td",{text:String(x[4]).slice(5,16)}),h("td",{text:x[7]+" / "+x[8]}),h("td",{text:x[12]?"Ja":"Nej"}),
+          return h("tr",null,[h("td",{text:x[2]}),h("td",{text:String(x[4]).slice(5,16)}),h("td",{text:x[7]+" / "+x[8]}),h("td",{text:(function(){var a=parse(x);return a.tegn||a.ny?(a.kunpapir?"Kun arket":"Ja"):"Nej";})()}),h("td",{text:x[12]?"Ja":"Nej"}),
             h("td",null,[h("button",{type:"button",class:"btn plain",text:CUR===x[0]?"Åbent":"Åbn",on:{click:function(){
               TEACHER=parse(x);TS=ts(x);CUR=x[0];TEGN=null;LR.draw(r);drawSheet();$("sheet").scrollIntoView();
               if(TEACHER.tegn) api("kl_laerer",{k:LR.k,noegle:LR.n,del:"tegn",id:x[0]}).then(function(q){
@@ -769,6 +782,17 @@ $("linkbtn").addEventListener("click",function(){
   err(""); $("link").value=location.origin+location.pathname+"#a="+pack(snap()); $("linkbox").hidden=false; $("link").focus(); $("link").select();
 });
 $("linkcopy").addEventListener("click",function(){copy(this,"Kopiér linket",$("link").value);});
+$("alenesend").addEventListener("click",function(){
+  var b=this, m=$("alenemsg");
+  function sig(t,bad){m.className=bad?"err":"ok";m.textContent=t;m.hidden=false;}
+  if(val("alenenavn").length<2){sig("Skriv dit navn først.",true);return;}
+  if(!PEN.length&&val("nytxt").length<15){sig("Skriv eller tegn dit svar først.",true);return;}
+  b.disabled=true;
+  api("kl_papir",{k:S.klasse,emne:emneNavn(ALENE),q:TP[ALENE].q,nyq:TP[ALENE].ny,navn:val("alenenavn"),ny:val("nytxt"),data:PEN.length?JSON.stringify(PEN):""})
+    .then(function(r){sig(r.fundet?"Sendt til "+r.navn+". Arket er lagt sammen med dit forløb.":"Sendt til "+r.navn+". Din lærer kan se arket under dit navn.");},
+          function(e){sig(e&&e.code==="ukendt"?"Klassen findes ikke. Spørg din lærer om et nyt link.":"Arket kunne ikke sendes. Prøv igen om lidt.",true);})
+    .then(function(){b.disabled=false;});
+});
 $("laterbtn").addEventListener("click",function(){
   if(val("later").length<5){err("Skriv din forklaring først, også selvom du ikke husker det hele.");return;}
   err(""); $("later-a").textContent=val("kort"); $("later-b").textContent=val("later"); $("laterbox").hidden=false;
@@ -786,6 +810,12 @@ function check(step){
   return "";
 }
 function show(){
+  if(ALENE){   /* only the sheet without AI, for a tablet */
+    ORDER.forEach(function(x){$("sc-"+x).hidden=x!=="ny";});
+    document.body.classList.add("arkalene");
+    $("nyq").textContent=TP[ALENE].ny; $("nyq").hidden=false; $("nyqfield").hidden=true; $("alene").hidden=false;
+    drawPaper($("papir"),PEN); return;
+  }
   if(TEACHER||LAERER){ORDER.forEach(function(x){$("sc-"+x).hidden=x!=="ark";});$("sc-laerer").hidden=!LAERER;document.body.classList.add("laerer","serious");drawSheet();return;}
   var p=topic(), i=ORDER.indexOf(S.step);
   ORDER.forEach(function(s){$("sc-"+s).hidden=s!==S.step;});
@@ -836,6 +866,7 @@ GOALS_FO.forEach(function(g){$("goalfo").appendChild(h("li",{text:"„"+g+"“"}
 $("rules").textContent=RULES;
 profile($("conf1"),"a"); profile($("conf2"),"b");
 if(URLQ.get("k")){S.klasse=URLQ.get("k").toUpperCase().replace(/[^A-Z0-9]/g,"");}
+if(API&&S.klasse&&!TEACHER&&!LAERER&&TP[URLQ.get("ark")]) ALENE=URLQ.get("ark");
 if(!TEACHER&&S.step!=="start"&&!topic()) S.step="start";
 show();
 $("laererind").hidden=!API;
