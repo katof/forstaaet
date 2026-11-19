@@ -150,6 +150,7 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
 
   <section class="panel" id="start" hidden>
     <h2 id="start-title">Start et forløb</h2>
+    <div class="stack tight" id="start-ny">
     <p class="muted">Siden gemmer dit forløb. Så kan du holde pause og fortsætte senere, og en fagperson kan se dit tjekark.</p>
     <h3>Det bliver gemt</h3>
     <ul class="plainlist muted">
@@ -159,10 +160,11 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
     </ul>
     <p class="muted">Det gemmes i et regneark hos den, der står for forsøget. Bruger siden en sprogmodel for dig, bliver dine spørgsmål sendt til den. Du kan stoppe når som helst.</p>
     <label class="check"><input type="checkbox" id="samtykke"><span>Jeg har læst det og vil gerne være med.</span></label>
-    <p class="err" id="starterr" role="alert" hidden></p>
     <div class="btnrow"><button type="button" class="btn" id="startbtn">Start</button></div>
+    </div>
     <h3>Har du en kode?</h3>
     <div class="field"><label class="label" for="kode">Din kode</label><input type="text" id="kode" placeholder="Fx ABCD-EFGH" autocomplete="off"></div>
+    <p class="err" id="starterr" role="alert" hidden></p>
     <div class="btnrow">
       <button type="button" class="btn plain" id="kodebtn">Fortsæt mit forløb</button>
       <button type="button" class="btn plain" id="lokalbtn">Brug siden uden at gemme</button>
@@ -178,6 +180,7 @@ pre.prompt{margin:0;border:2px solid var(--ink);background:var(--bg);padding:12p
     <button type="button" role="tab" id="tab-regler" aria-controls="view-regler" aria-selected="false">Sådan virker den</button>
   </div>
   <p class="note" id="aistate"></p>
+  <div class="btnrow" id="koderow" hidden><button type="button" class="btn plain" id="harkode">Jeg har en kode til et gemt forløb</button></div>
   <div class="btnrow" id="moderow" hidden><button type="button" class="btn plain" id="modebtn">Brug min egen chat i stedet</button></div>
 
   <!-- VIEW: LÆR -->
@@ -562,7 +565,7 @@ function show(mode){
   var app=mode==="laer";
   document.querySelector(".tabs").hidden=!app||fri(); $("aistate").hidden=!app;
   TABS.forEach(function(x){$("view-"+x).hidden=!(app&&$("tab-"+x).getAttribute("aria-selected")==="true");});
-  $("start").hidden=mode!=="start";
+  $("start").hidden=mode!=="start"; $("koderow").hidden=!(app&&API&&!run);
   if(!app){$("moderow").hidden=true;$("runbar").hidden=true;}
 }
 function applyRun(r){
@@ -632,6 +635,7 @@ $("kodebtn").addEventListener("click",function(){
   resume(k.slice(0,4)+"-"+k.slice(4));
 });
 $("lokalbtn").addEventListener("click",function(){show("laer");paintAi();});
+$("harkode").addEventListener("click",function(){show("start");$("kode").focus();});
 $("backlater").addEventListener("click",function(){laterOnly=true;$("back").hidden=true;layout();log("forklarer igen først");$("later").focus();});
 $("backgo").addEventListener("click",function(){$("back").hidden=true;log("fortsatte uden at forklare igen");});
 
@@ -772,9 +776,10 @@ function boot(){
   if(!API) return;
   if(Q.get("fag")){show("fag");fagView(Q.get("fag"));return;}
   if(Q.has("forsker")){show("forsker");forskerView();return;}
+  if(Q.get("k")){show("start");resume(Q.get("k"));return;}
+  if(!Q.get("f")){$("start-ny").hidden=true;$("start-title").textContent="Fortsæt dit forløb";show("laer");return;}
   show("start");
-  if(Q.get("k")){resume(Q.get("k"));return;}
-  if(Q.get("f")){
+  {
     $("lokalbtn").hidden=true;
     api("forsog",{f:Q.get("f")}).then(function(r){$("start-title").textContent=r.titel;},
       function(){showErr("starterr","Forsøget findes ikke. Tjek linket.");});
